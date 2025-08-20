@@ -354,12 +354,18 @@ class DomainAggregateRootField: IFieldBridge {
                 throw UnsupportedOperationException("不支持对 @OrmFields 注解的字段进行设值操作")
             }
             listOrmFields != null -> {
+                if (value is List<*>&&value.isEmpty()) {
+                    return
+                }
                 throw UnsupportedOperationException("不支持对 @ListOrmFields 注解的字段进行设值操作")
             }
             polyOrmFields != null -> {
                 throw UnsupportedOperationException("不支持对 @PolyOrmFields 注解的字段进行设值操作")
             }
             polyListOrmFields != null -> {
+                if (value is List<*>&&value.isEmpty()) {
+                    return
+                }
                 throw UnsupportedOperationException("不支持对 @PolyListOrmFields 注解的字段进行设值操作")
             }
             else -> {

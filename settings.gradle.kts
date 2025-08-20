@@ -7,17 +7,31 @@ dependencyResolutionManagement {
     // Use Maven Central as the default repository (where Gradle will download dependencies) in all subprojects.
     @Suppress("UnstableApiUsage")
     repositories {
+        mavenLocal()
         mavenCentral()
     }
 }
 
-plugins {
-    // Use the Foojay Toolchains plugin to automatically download JDKs required by subprojects.
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+//pluginManagement {
+//    repositories {
+//        mavenLocal()             // 本地仓库
+//        gradlePluginPortal()     // 官方插件仓库
+//        mavenCentral()           // 其他仓库
+//    }
+//}
+pluginManagement {
+    includeBuild("pragma-ddd-analyzer")
 }
+
+//plugins {
+//    // Use the Foojay Toolchains plugin to automatically download JDKs required by subprojects.
+//    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+//}
 
 rootProject.name = "pragma-ddd"
 include("pragma-ddd-core")
 include("pragma-ddd-aspect")
 include("pragma-ddd-jimmer")
 include("pragma-ddd-ksp")
+//include("pragma-ddd-analyzer")
+include("demo")

@@ -1,4 +1,4 @@
-package org.morecup.jimmerddd.pragmaddd.jimmer.proxy
+package org.morecup.pragmaddd.jimmer.proxy
 
 import org.babyfish.jimmer.meta.ImmutableType
 import org.babyfish.jimmer.runtime.DraftSpi

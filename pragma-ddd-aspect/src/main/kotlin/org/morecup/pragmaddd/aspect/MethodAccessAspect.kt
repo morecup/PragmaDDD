@@ -1,6 +1,5 @@
-package org.morecup.jimmerddd.pragmaddd.aspect
+package org.morecup.pragmaddd.aspect
 
-import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.*
 
 @Aspect

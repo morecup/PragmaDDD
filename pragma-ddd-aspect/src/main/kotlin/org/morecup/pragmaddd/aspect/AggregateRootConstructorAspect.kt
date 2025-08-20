@@ -32,6 +32,6 @@ class AggregateRootConstructorAspect {
 //        return obj
 //    }
 
-//    @Pointcut("call(*.new(..)) && @within(org.morecup.jimmerddd.betterddd.annotation.AggregateRoot)")
+//    @Pointcut("call(*.new(..)) && @within(org.morecup.pragmaddd.core.annotation.AggregateRoot)")
 //    fun callConstructorOfAggregateRoot() {}
 }

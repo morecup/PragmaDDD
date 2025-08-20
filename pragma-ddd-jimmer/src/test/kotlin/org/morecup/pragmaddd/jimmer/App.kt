@@ -4,8 +4,8 @@ import org.babyfish.jimmer.client.EnableImplicitApi
 import org.morecup.pragmaddd.core.proxy.OrmEntityConstructorConfig
 import org.morecup.pragmaddd.core.proxy.OrmEntityOperatorConfig
 import org.morecup.pragmaddd.core.proxy.aggregateRootToOrmEntityClassCache
-import org.morecup.jimmerddd.pragmaddd.jimmer.proxy.JimmerEntityConstructor
-import org.morecup.jimmerddd.pragmaddd.jimmer.proxy.JimmerEntityOperator
+import org.morecup.pragmaddd.jimmer.proxy.JimmerEntityConstructor
+import org.morecup.pragmaddd.jimmer.proxy.JimmerEntityOperator
 import org.morecup.pragmaddd.jimmer.admin.goods.AddressEntity
 import org.morecup.pragmaddd.jimmer.admin.goods.BeijingAddressEntity
 import org.morecup.pragmaddd.jimmer.admin.goods.GoodsEntity

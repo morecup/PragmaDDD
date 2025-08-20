@@ -20,3 +20,4 @@ rootProject.name = "pragma-ddd"
 include("pragma-ddd-core")
 include("pragma-ddd-aspect")
 include("pragma-ddd-jimmer")
+include("pragma-ddd-ksp")

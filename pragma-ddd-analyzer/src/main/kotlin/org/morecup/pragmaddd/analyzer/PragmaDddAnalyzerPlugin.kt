@@ -79,6 +79,8 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
             // 根据配置选择是否启用 AspectJ
             when (extension.aspectJMode.getOrElse(AspectJMode.ENABLED)) {
                 AspectJMode.ENABLED -> {
+                    // 配置AspectJ依赖
+                    configureAspectJDependencies(project)
                     // 使用自定义 AspectJ 任务，完全控制执行顺序
                     customAspectJConfigurator.configureCustomAspectJTask(project, analyzeTask.get(), extension)
                 }
@@ -109,6 +111,46 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
 
         // 如果有测试任务，也让它依赖分析任务
         project.tasks.findByName("test")?.dependsOn(analyzeTask)
+    }
+
+    private fun configureAspectJDependencies(project: Project) {
+        try {
+            // 1. 添加 AspectJ 工具依赖（用于编译）
+            project.dependencies.add("implementation", "org.aspectj:aspectjtools:1.9.7")
+            
+            // 2. 添加 AspectJ 运行时依赖
+            project.dependencies.add("implementation", "org.aspectj:aspectjrt:1.9.7")
+
+            // 3. 添加 pragma-ddd-core 依赖（普通依赖）
+            try {
+                project.dependencies.add("implementation", project.project(":pragma-ddd-core"))
+                project.logger.info("已自动配置 implementation 依赖: pragma-ddd-core")
+            } catch (e: Exception) {
+                val version = getPluginVersion()
+                project.logger.info("本地 pragma-ddd-core 模块不存在，将使用外部依赖版本: $version")
+                project.dependencies.add("implementation", "org.morecup.pragmaddd:pragma-ddd-core:$version")
+            }
+
+            // 4. 关键：添加 aspect 依赖（AspectJ 特有的配置）
+            // 首先确保 aspect 配置存在
+            val aspectConfiguration = project.configurations.findByName("aspect") 
+                ?: project.configurations.create("aspect")
+            
+            try {
+                project.dependencies.add("aspect", project.project(":pragma-ddd-aspect"))
+                project.logger.info("已自动配置 aspect 依赖: pragma-ddd-aspect")
+            } catch (e: Exception) {
+                val version = getPluginVersion()
+                project.logger.info("本地 pragma-ddd-aspect 模块不存在，将使用外部依赖版本: $version")
+                project.dependencies.add("aspect", "org.morecup.pragmaddd:pragma-ddd-aspect:$version")
+            }
+
+            project.logger.info("已自动配置 AspectJ 依赖")
+
+        } catch (e: Exception) {
+            project.logger.error("配置 AspectJ 依赖时出错: ${e.message}", e)
+            throw e
+        }
     }
 
 }

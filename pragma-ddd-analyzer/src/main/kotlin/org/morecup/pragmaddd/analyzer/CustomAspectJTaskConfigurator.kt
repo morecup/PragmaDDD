@@ -117,13 +117,64 @@ class CustomAspectJTaskConfigurator {
     }
 
     private fun getAspectPathFiles(project: Project): List<File> {
-        // 只返回配置名称，实际文件解析在任务执行时进行
-        return emptyList()
+        val files = mutableListOf<File>()
+
+        try {
+            // 首先尝试从本地项目模块获取
+            try {
+                val aspectProject = project.project(":pragma-ddd-aspect")
+                val aspectJar = File(aspectProject.buildDir, "libs/pragma-ddd-aspect.jar")
+                if (aspectJar.exists()) {
+                    files.add(aspectJar)
+                    project.logger.info("找到本地 aspect JAR: ${aspectJar.absolutePath}")
+                }
+            } catch (e: Exception) {
+                project.logger.debug("本地 pragma-ddd-aspect 模块不存在: ${e.message}")
+            }
+
+            // 然后从 aspect 配置中获取
+            val aspectConfiguration = project.configurations.findByName("aspect")
+            if (aspectConfiguration != null) {
+                // 使用 incoming.files 而不是直接访问 files 属性
+                val aspectFiles = aspectConfiguration.incoming.files.files
+                files.addAll(aspectFiles)
+                project.logger.info("从 aspect 配置获取到 ${aspectFiles.size} 个文件")
+            }
+        } catch (e: Exception) {
+            project.logger.warn("获取 aspect 路径时出错: ${e.message}")
+        }
+
+        return files
     }
 
     private fun getClassPathFiles(project: Project): List<File> {
-        // 只返回配置名称，实际文件解析在任务执行时进行
-        return emptyList()
+        val files = mutableListOf<File>()
+
+        try {
+            // 获取运行时类路径
+            val runtimeClasspath = project.configurations.findByName("runtimeClasspath")
+            if (runtimeClasspath != null) {
+                val classpathFiles = runtimeClasspath.incoming.files.files
+                files.addAll(classpathFiles)
+                project.logger.info("从 runtimeClasspath 获取到 ${classpathFiles.size} 个文件")
+            }
+        } catch (e: Exception) {
+            project.logger.warn("获取类路径时出错: ${e.message}")
+            
+            // 备用方案：使用编译类路径
+            try {
+                val compileClasspath = project.configurations.findByName("compileClasspath")
+                if (compileClasspath != null) {
+                    val classpathFiles = compileClasspath.incoming.files.files
+                    files.addAll(classpathFiles)
+                    project.logger.info("从 compileClasspath 获取到 ${classpathFiles.size} 个文件")
+                }
+            } catch (e2: Exception) {
+                project.logger.warn("获取编译类路径也失败: ${e2.message}")
+            }
+        }
+
+        return files
     }
 
     private fun getCompileTasks(project: Project): List<Task> {

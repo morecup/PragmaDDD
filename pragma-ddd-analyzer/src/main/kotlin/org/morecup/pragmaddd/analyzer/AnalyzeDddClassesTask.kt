@@ -1,10 +1,8 @@
 package org.morecup.pragmaddd.analyzer
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.file.FileTree
+import org.gradle.api.tasks.*
 import java.io.File
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
@@ -29,6 +27,46 @@ open class AnalyzeDddClassesTask : DefaultTask() {
     val outputFile: File
         get() = project.file(extension.outputFile.getOrElse("build/reports/pragma-ddd-analysis.json"))
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val inputClassFiles: FileTree
+        get() {
+            val classPaths = extension.classPaths.getOrElse(emptySet()).ifEmpty {
+                // 自动检测可能的编译输出目录
+                val possiblePaths = mutableSetOf<String>()
+
+                // Kotlin 编译输出
+                if (project.file("build/classes/kotlin/main").exists()) {
+                    possiblePaths.add("build/classes/kotlin/main")
+                }
+
+                // Java 编译输出
+                if (project.file("build/classes/java/main").exists()) {
+                    possiblePaths.add("build/classes/java/main")
+                }
+
+                // 如果都不存在，使用默认路径
+                if (possiblePaths.isEmpty()) {
+                    possiblePaths.addAll(setOf(
+                        "build/classes/kotlin/main",
+                        "build/classes/java/main"
+                    ))
+                }
+
+                possiblePaths
+            }
+
+            // 创建包含所有 .class 文件的 FileTree
+            return project.fileTree(mapOf("includes" to listOf("**/*.class"))).apply {
+                classPaths.forEach { classPath ->
+                    val dir = project.file(classPath)
+                    if (dir.exists()) {
+                        from(dir)
+                    }
+                }
+            }
+        }
+
     @TaskAction
     fun analyze() {
         println("开始分析 DDD 类的字节码（AspectJ 织入之前的原始字节码）...")
@@ -36,43 +74,27 @@ open class AnalyzeDddClassesTask : DefaultTask() {
         val analyzer = AggregateRootAnalyzer()
         val results = mutableListOf<ClassAnalysisResult>()
 
-        // 获取编译输出目录
-        val classPaths = extension.classPaths.getOrElse(emptySet()).ifEmpty {
-            // 自动检测可能的编译输出目录
-            val possiblePaths = mutableSetOf<String>()
+        // 获取输入的 class 文件目录
+        val classDirectories = inputClassFiles.files
+            .map { it.parentFile }
+            .distinct()
+            .filter { it.exists() && it.isDirectory }
 
-            // Kotlin 编译输出
-            if (project.file("build/classes/kotlin/main").exists()) {
-                possiblePaths.add("build/classes/kotlin/main")
-            }
-
-            // Java 编译输出
-            if (project.file("build/classes/java/main").exists()) {
-                possiblePaths.add("build/classes/java/main")
-            }
-
-            // 如果都不存在，使用默认路径（可能还没编译）
-            if (possiblePaths.isEmpty()) {
-                possiblePaths.addAll(setOf(
-                    "build/classes/kotlin/main",
-                    "build/classes/java/main"
-                ))
-            }
-
-            possiblePaths
+        if (classDirectories.isEmpty()) {
+            println("警告：没有找到编译后的 class 文件目录")
+            // 仍然输出空结果文件
+            outputResults(results)
+            return
         }
 
-        classPaths.forEach { classPath ->
-            val dir = project.file(classPath)
-            if (dir.exists() && dir.isDirectory) {
-                println("正在分析目录: ${dir.absolutePath}")
-                if (verbose) {
-                    println("  注意：此时读取的是编译后、AspectJ 织入前的原始字节码")
-                }
-                val dirResults = analyzer.analyzeDirectory(dir)
-                results.addAll(dirResults)
-                println("  在目录 ${dir.name} 中找到 ${dirResults.size} 个 @AggregateRoot 类")
+        classDirectories.forEach { dir ->
+            println("正在分析目录: ${dir.absolutePath}")
+            if (verbose) {
+                println("  注意：此时读取的是编译后、AspectJ 织入前的原始字节码")
             }
+            val dirResults = analyzer.analyzeDirectory(dir)
+            results.addAll(dirResults)
+            println("  在目录 ${dir.name} 中找到 ${dirResults.size} 个 @AggregateRoot 类")
         }
 
         // 输出结果

@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     id("org.morecup.pragmaddd.pragma-ddd-analyzer")
+//    id("io.freefair.aspectj.post-compile-weaving") version "8.4"
 }
 
 repositories {

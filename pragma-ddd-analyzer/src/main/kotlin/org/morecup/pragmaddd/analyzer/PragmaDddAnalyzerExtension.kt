@@ -13,6 +13,7 @@ import org.gradle.api.provider.SetProperty
  *     outputFormat.set("JSON")                             // 输出格式：JSON 或 TXT
  *     outputFile.set("build/reports/ddd-analysis.json")    // 自定义输出文件
  *     classPaths.set(setOf("build/classes/kotlin/main"))   // 自定义类路径（通常不需要）
+ *     enableAspectJ.set(true)                              // 启用 AspectJ 织入功能
  * }
  * ```
  */
@@ -43,11 +44,19 @@ abstract class PragmaDddAnalyzerExtension {
      */
     abstract val outputFormat: Property<String>
     
+    /**
+     * 是否启用 AspectJ 织入功能
+     * 启用后会自动配置 AspectJ 插件和依赖
+     * 默认值：true
+     */
+    abstract val enableAspectJ: Property<Boolean>
+    
     init {
         // 设置默认值 - 将 JSON 文件生成到 resources 目录，这样会包含在 JAR 中
         outputFile.convention("build/resources/main/META-INF/pragma-ddd-analysis.json")
         verbose.convention(false)
         outputFormat.convention("JSON")
         classPaths.convention(emptySet())
+        enableAspectJ.convention(true)
     }
 }

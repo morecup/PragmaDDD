@@ -8,7 +8,7 @@ import java.util.jar.JarFile
 
 /**
  * AggregateRoot 类分析器
- * 在 AspectJ 修改字节码之前分析属性访问情况
+ * 分析编译后的字节码中的属性访问情况
  */
 class AggregateRootAnalyzer {
     

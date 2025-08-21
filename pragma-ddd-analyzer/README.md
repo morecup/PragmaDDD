@@ -1,10 +1,10 @@
 # Pragma DDD Analyzer
 
-这个模块提供了一个字节码分析工具，用于在 AspectJ 修改字节码之前分析被 `@AggregateRoot` 注解的类的属性访问情况。
+这个模块提供了一个字节码分析工具，用于分析被 `@AggregateRoot` 注解的类的属性访问情况。
 
 ## 功能特性
 
-- 在 AspectJ 处理之前分析字节码
+- 分析编译后的字节码文件
 - 检测 `@AggregateRoot` 注解的类
 - 分析方法内的属性访问（读取和写入）
 - 支持直接字段访问和 getter/setter 方法调用
@@ -108,5 +108,4 @@ Pragma DDD 分析结果
 ## 注意事项
 
 - 只分析被 `@AggregateRoot` 注解的类
-- 必须在 AspectJ 处理之前运行
 - 需要先编译类文件才能进行分析

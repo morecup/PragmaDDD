@@ -69,7 +69,7 @@ open class AnalyzeDddClassesTask : DefaultTask() {
 
     @TaskAction
     fun analyze() {
-        println("开始分析 DDD 类的字节码（AspectJ 织入之前的原始字节码）...")
+        println("开始分析 DDD 类的字节码...")
 
         val analyzer = AggregateRootAnalyzer()
         val results = mutableListOf<ClassAnalysisResult>()
@@ -90,7 +90,7 @@ open class AnalyzeDddClassesTask : DefaultTask() {
         classDirectories.forEach { dir ->
             println("正在分析目录: ${dir.absolutePath}")
             if (verbose) {
-                println("  注意：此时读取的是编译后、AspectJ 织入前的原始字节码")
+                println("  正在读取编译后的字节码文件")
             }
             val dirResults = analyzer.analyzeDirectory(dir)
             results.addAll(dirResults)

@@ -16,13 +16,6 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 
-    // AspectJ support for auto-configuration
-    implementation("org.aspectj:aspectjrt:1.9.7")
-    implementation("org.aspectj:aspectjtools:1.9.7")
-    
-    // 预先声明 AspectJ 插件依赖，这样用户项目就能找到它
-    implementation("io.freefair.gradle:aspectj-plugin:8.4")
-
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
 
     // Gradle API for plugin development
@@ -38,7 +31,7 @@ gradlePlugin {
             id = "org.morecup.pragmaddd.pragma-ddd-analyzer"
             implementationClass = "org.morecup.pragmaddd.analyzer.PragmaDddAnalyzerPlugin"
             displayName = "Pragma DDD Analyzer"
-            description = "Analyzes DDD aggregate root classes for property access patterns and provides AspectJ integration"
+            description = "Analyzes DDD aggregate root classes for property access patterns"
         }
     }
 }

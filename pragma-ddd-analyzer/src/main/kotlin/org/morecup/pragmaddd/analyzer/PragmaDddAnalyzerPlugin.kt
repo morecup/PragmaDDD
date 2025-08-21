@@ -17,8 +17,6 @@ import org.gradle.api.Project
  *     verbose.set(true)
  *     outputFormat.set("JSON") // JSON 或 TXT
  *     outputFile.set("build/reports/pragma-ddd-analysis.json")
- *     aspectJMode.set(AspectJMode.ENABLED) // AspectJ 织入模式
- *     showWeaveInfo.set(false) // 是否显示 AspectJ 织入详细信息（默认false）
  * }
  * ```
  */
@@ -68,28 +66,9 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
             task.extension = extension
         }
 
-
-
-        // 创建自定义 AspectJ 任务配置器
-        val customAspectJConfigurator = CustomAspectJTaskConfigurator()
-
         // 自动集成到构建流程中
         project.afterEvaluate {
             configureTaskDependencies(project, analyzeTask.get())
-
-            // 根据配置选择是否启用 AspectJ
-            when (extension.aspectJMode.getOrElse(AspectJMode.ENABLED)) {
-                AspectJMode.ENABLED -> {
-                    // 配置AspectJ依赖
-                    configureAspectJDependencies(project)
-                    // 使用自定义 AspectJ 任务，完全控制执行顺序
-                    customAspectJConfigurator.configureCustomAspectJTask(project, analyzeTask.get(), extension)
-                }
-                AspectJMode.DISABLED -> {
-                    // 不配置 AspectJ，仅运行分析任务
-                    project.logger.info("AspectJ 织入功能已禁用")
-                }
-            }
         }
     }
 
@@ -97,10 +76,9 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         // 查找编译任务
         val compileKotlinTask = project.tasks.findByName("compileKotlin")
         val compileJavaTask = project.tasks.findByName("compileJava")
-        val classesTask = project.tasks.findByName("classes")
         val processResourcesTask = project.tasks.findByName("processResources")
 
-        // 关键修改：分析任务依赖于编译任务，但必须在 AspectJ 织入之前执行
+        // 分析任务依赖于编译任务
         compileKotlinTask?.let { analyzeTask.dependsOn(it) }
         compileJavaTask?.let { analyzeTask.dependsOn(it) }
 
@@ -114,47 +92,6 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         project.tasks.findByName("test")?.dependsOn(analyzeTask)
     }
 
-    private fun configureAspectJDependencies(project: Project) {
-        try {
-            // 1. 添加 AspectJ 工具依赖（用于编译）
-            project.dependencies.add("implementation", "org.aspectj:aspectjtools:1.9.7")
-            
-            // 2. 添加 AspectJ 运行时依赖
-            project.dependencies.add("implementation", "org.aspectj:aspectjrt:1.9.7")
 
-            // 3. 添加 pragma-ddd-core 依赖（普通依赖）
-            try {
-                project.dependencies.add("implementation", project.project(":pragma-ddd-core"))
-                project.logger.info("已自动配置 implementation 依赖: pragma-ddd-core")
-            } catch (e: Exception) {
-                val version = getPluginVersion()
-                project.logger.info("本地 pragma-ddd-core 模块不存在，将使用外部依赖版本: $version")
-                project.dependencies.add("implementation", "org.morecup.pragmaddd:pragma-ddd-core:$version")
-            }
-
-            // 4. 关键：添加 aspect 依赖（AspectJ 特有的配置）
-            // 首先确保 aspect 配置存在
-            val aspectConfiguration = project.configurations.findByName("aspect") 
-                ?: project.configurations.create("aspect").apply {
-                    // 配置aspect配置不传递依赖，避免包含不必要的传递依赖
-                    isTransitive = false
-                }
-            
-            try {
-                project.dependencies.add("aspect", project.project(":pragma-ddd-aspect"))
-                project.logger.info("已自动配置 aspect 依赖: pragma-ddd-aspect")
-            } catch (e: Exception) {
-                val version = getPluginVersion()
-                project.logger.info("本地 pragma-ddd-aspect 模块不存在，将使用外部依赖版本: $version")
-                project.dependencies.add("aspect", "org.morecup.pragmaddd:pragma-ddd-aspect:$version")
-            }
-
-            project.logger.info("已自动配置 AspectJ 依赖")
-
-        } catch (e: Exception) {
-            project.logger.error("配置 AspectJ 依赖时出错: ${e.message}", e)
-            throw e
-        }
-    }
 
 }

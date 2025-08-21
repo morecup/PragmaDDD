@@ -61,9 +61,10 @@ class CustomAspectJTaskConfigurator {
             }
         })
 
-        // 配置输出目录
-        val outputDir = File(project.layout.buildDirectory.get().asFile, "classes/aspectj/main")
-        task.outputDirectory.set(outputDir)
+        // 配置输出目录 - 直接使用原本的编译输出目录，而不是单独的目录
+        // 这样 AspectJ 织入后的 class 文件会直接替换原本的 class 文件
+        val mainOutputDir = getMainCompiledClassesDir(project)
+        task.outputDirectory.set(mainOutputDir)
     }
 
     private fun configureTaskOptions(task: CustomAspectJTask, extension: PragmaDddAnalyzerExtension) {
@@ -114,6 +115,18 @@ class CustomAspectJTaskConfigurator {
         dirs.add(File(project.buildDir, "classes/java/main"))
 
         return dirs.filter { it.exists() }
+    }
+
+    private fun getMainCompiledClassesDir(project: Project): File {
+        // 优先使用 Kotlin 编译输出目录，如果不存在则使用 Java 编译输出目录
+        val kotlinDir = File(project.buildDir, "classes/kotlin/main")
+        val javaDir = File(project.buildDir, "classes/java/main")
+        
+        return when {
+            kotlinDir.exists() -> kotlinDir
+            javaDir.exists() -> javaDir
+            else -> kotlinDir // 默认使用 Kotlin 目录，即使不存在也会被创建
+        }
     }
 
     private fun getAspectPathFiles(project: Project): List<File> {

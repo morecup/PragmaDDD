@@ -10,11 +10,13 @@ import java.io.File
 import javax.inject.Inject
 
 /**
- * 自定义 AspectJ 编译任务
- * 直接调用 AspectJ 编译器，完全控制编译顺序
+ * 自定义 AspectJ 织入任务
+ * 直接在原本的编译输出目录上进行 AspectJ 织入，确保正确的执行顺序
  * 
- * 执行顺序：编�� → 分析 → AspectJ织入
- * 这样确保分析任务读取的是原始字节码，而不是被AspectJ修改后的字节码
+ * 执行顺序：编译 → 分析 → AspectJ织入
+ * 这样确保：
+ * 1. 分析任务读取的是原始字节码，而不是被AspectJ修改后的字节码
+ * 2. AspectJ织入后的class文件直接替换原始文件，后续任务可以正常使用
  */
 @CacheableTask
 abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
@@ -45,7 +47,7 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     abstract val additionalArgs: ListProperty<String>
     
     init {
-        description = "自定义 AspectJ 编译任务，直接调用 ajc 编译器"
+        description = "自定义 AspectJ 织入任务，直接在原编译目录上进行织入"
         group = "aspectj"
         
         // 设置默认值
@@ -57,16 +59,20 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     @TaskAction
     fun compile() {
         val outputDir = outputDirectory.get().asFile
-        outputDir.mkdirs()
         
-        logger.warn("开始执行自定义 AspectJ 编译...")
-        logger.warn("输出目录: ${outputDir.absolutePath}")
+        logger.warn("开始执行自定义 AspectJ 织入...")
+        logger.warn("目标目录: ${outputDir.absolutePath}")
+        
+        // 检查目标目录是否存在编译后的 class 文件
+        if (!outputDir.exists() || outputDir.listFiles()?.isEmpty() == true) {
+            logger.warn("目标目录不存在或为空，跳过 AspectJ 织入")
+            return
+        }
         
         // 检查是否有aspect文件
         val aspectFiles = aspectPath.files
         if (aspectFiles.isEmpty()) {
             logger.warn("没有找到aspect文件，跳过AspectJ织入")
-            copySourceFilesToOutput(outputDir)
             return
         }
         
@@ -76,22 +82,18 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         }
         
         try {
-            // 在任务执行时才尝试进行AspectJ织入
+            // 直接在原本的编译输出目录上进行AspectJ织入
             performAspectJWeaving(outputDir)
-            logger.warn("AspectJ 织入完成")
+            logger.warn("AspectJ 织入完成，已直接修改原始 class 文件")
         } catch (e: Exception) {
             logger.error("AspectJ 织入失败: ${e.message}", e)
-            // 如果织入失败，至少复制原始文件
-            logger.warn("回退到文件复制模式")
-            copySourceFilesToOutput(outputDir)
+            throw e
         }
     }
     
     private fun performAspectJWeaving(outputDir: File) {
-        // 首先复制源文件到输出目录
-        copySourceFilesToOutput(outputDir)
-        
-        // 然后尝试进行AspectJ织入
+        // 直接在原本的编译输出目录上进行 AspectJ 织入
+        // 不需要复制文件，直接修改现有的 class 文件
         val ajcArgs = buildAjcArguments(outputDir)
         
         if (verbose.get()) {
@@ -101,19 +103,12 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         executeAjc(ajcArgs)
     }
     
-    private fun copySourceFilesToOutput(outputDir: File) {
-        sourceFiles.files.forEach { sourceFile ->
-            if (sourceFile.exists() && sourceFile.isDirectory) {
-                sourceFile.copyRecursively(outputDir, overwrite = true)
-                logger.info("复制源文件: ${sourceFile.absolutePath} -> ${outputDir.absolutePath}")
-            }
-        }
-    }
+
     
     private fun buildAjcArguments(outputDir: File): List<String> {
         val args = mutableListOf<String>()
         
-        // 输出目录
+        // 输出目录 - 直接输出到原本的编译目录
         args.addAll(listOf("-d", outputDir.absolutePath))
         
         // 类路径
@@ -144,7 +139,8 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         // 额外参数
         args.addAll(additionalArgs.get())
         
-        // 输入目录（已编译的class文件）
+        // 输入路径 - 直接使用原本的编译输出目录作为输入
+        // 这样 AspectJ 会读取现有的 class 文件，进行织入，然后输出到同一个目录
         args.add("-inpath")
         args.add(outputDir.absolutePath)
         
@@ -163,7 +159,8 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         }
     }
     
-    private fun executeAjcDirect(args: List<String>) {
+    private fun executeAjcDirect(args: List<String>)
+    {
         // 使用 AspectJ 的 Main 类直接编译
         val ajcMainClass = try {
             // 尝试加载 AspectJ 编译器主类

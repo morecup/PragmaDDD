@@ -44,8 +44,8 @@ abstract class PragmaDddAnalyzerExtension {
     abstract val outputFormat: Property<String>
     
     init {
-        // 设置默认值
-        outputFile.convention("build/reports/pragma-ddd-analysis.json")
+        // 设置默认值 - 将 JSON 文件生成到 resources 目录，这样会包含在 JAR 中
+        outputFile.convention("build/resources/main/META-INF/pragma-ddd-analysis.json")
         verbose.convention(false)
         outputFormat.convention("JSON")
         classPaths.convention(emptySet())

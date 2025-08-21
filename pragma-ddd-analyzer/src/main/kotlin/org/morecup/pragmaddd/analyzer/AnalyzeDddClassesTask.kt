@@ -85,6 +85,9 @@ open class AnalyzeDddClassesTask : DefaultTask() {
                     if (method.modifiedProperties.isNotEmpty()) {
                         println("    修改属性: ${method.modifiedProperties}")
                     }
+                    if (method.calledMethods.isNotEmpty()) {
+                        println("    调用方法: ${method.calledMethods.map { "${it.methodName}(调用${it.callCount}次)" }}")
+                    }
                 }
             }
         }
@@ -131,6 +134,9 @@ open class AnalyzeDddClassesTask : DefaultTask() {
                         }
                         if (method.modifiedProperties.isNotEmpty()) {
                             appendLine("    修改属性: ${method.modifiedProperties.joinToString(", ")}")
+                        }
+                        if (method.calledMethods.isNotEmpty()) {
+                            appendLine("    调用方法: ${method.calledMethods.joinToString(", ") { "${it.methodName}(${it.callCount}次)" }}")
                         }
                         appendLine()
                     }

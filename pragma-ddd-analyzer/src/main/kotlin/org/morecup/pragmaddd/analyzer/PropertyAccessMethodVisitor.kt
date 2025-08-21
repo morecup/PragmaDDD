@@ -3,7 +3,7 @@ package org.morecup.pragmaddd.analyzer
 import org.objectweb.asm.*
 
 /**
- * 方法访问器，用于分析方法内的属性访问
+ * 方法访问器，用于分析方法内的属性访问和方法调用
  */
 class PropertyAccessMethodVisitor(
     private val className: String,
@@ -14,6 +14,7 @@ class PropertyAccessMethodVisitor(
     
     private val accessedProperties = mutableSetOf<String>()
     private val modifiedProperties = mutableSetOf<String>()
+    private val calledMethods = mutableMapOf<String, MethodCallInfo>()
     
     override fun visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String) {
         // 只关注当前类的字段访问
@@ -39,23 +40,40 @@ class PropertyAccessMethodVisitor(
         descriptor: String,
         isInterface: Boolean
     ) {
-        // 检测 getter/setter 方法调用
-        if (owner.replace('/', '.') == className) {
-            when {
-                name.startsWith("get") && name.length > 3 -> {
-                    // getter 方法
-                    val propertyName = name.substring(3).replaceFirstChar { it.lowercase() }
-                    accessedProperties.add(propertyName)
+        val ownerClassName = owner.replace('/', '.')
+        
+        // 只关注当前类的方法调用
+        if (ownerClassName == className) {
+            // 跳过构造方法和静态初始化块
+            if (name != "<init>" && name != "<clinit>") {
+                // 记录方法调用
+                val methodKey = "$name$descriptor"
+                val existingCall = calledMethods[methodKey]
+                if (existingCall != null) {
+                    // 如果已经记录过这个方法调用，增加调用次数
+                    calledMethods[methodKey] = existingCall.copy(callCount = existingCall.callCount + 1)
+                } else {
+                    // 新的方法调用
+                    calledMethods[methodKey] = MethodCallInfo(name, descriptor, 1)
                 }
-                name.startsWith("is") && name.length > 2 -> {
-                    // boolean getter 方法
-                    val propertyName = name.substring(2).replaceFirstChar { it.lowercase() }
-                    accessedProperties.add(propertyName)
-                }
-                name.startsWith("set") && name.length > 3 -> {
-                    // setter 方法
-                    val propertyName = name.substring(3).replaceFirstChar { it.lowercase() }
-                    modifiedProperties.add(propertyName)
+                
+                // 检测 getter/setter 方法调用，推断属性访问
+                when {
+                    name.startsWith("get") && name.length > 3 -> {
+                        // getter 方法
+                        val propertyName = name.substring(3).replaceFirstChar { it.lowercase() }
+                        accessedProperties.add(propertyName)
+                    }
+                    name.startsWith("is") && name.length > 2 -> {
+                        // boolean getter 方法
+                        val propertyName = name.substring(2).replaceFirstChar { it.lowercase() }
+                        accessedProperties.add(propertyName)
+                    }
+                    name.startsWith("set") && name.length > 3 -> {
+                        // setter 方法
+                        val propertyName = name.substring(3).replaceFirstChar { it.lowercase() }
+                        modifiedProperties.add(propertyName)
+                    }
                 }
             }
         }
@@ -64,14 +82,16 @@ class PropertyAccessMethodVisitor(
     
     override fun visitEnd() {
         // 方法分析完成，记录结果
-        if (accessedProperties.isNotEmpty() || modifiedProperties.isNotEmpty()) {
+        // 只要有属性访问、属性修改或方法调用，就记录这个方法
+        if (accessedProperties.isNotEmpty() || modifiedProperties.isNotEmpty() || calledMethods.isNotEmpty()) {
             methods.add(
                 PropertyAccessInfo(
                     className = className,
                     methodName = methodName,
                     methodDescriptor = methodDescriptor,
                     accessedProperties = accessedProperties.toSet(),
-                    modifiedProperties = modifiedProperties.toSet()
+                    modifiedProperties = modifiedProperties.toSet(),
+                    calledMethods = calledMethods.values.toSet()
                 )
             )
         }

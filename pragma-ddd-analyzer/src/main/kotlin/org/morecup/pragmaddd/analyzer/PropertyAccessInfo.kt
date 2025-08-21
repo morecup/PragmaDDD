@@ -1,6 +1,15 @@
 package org.morecup.pragmaddd.analyzer
 
 /**
+ * 方法调用信息
+ */
+data class MethodCallInfo(
+    val methodName: String,
+    val methodDescriptor: String,
+    val callCount: Int = 1
+)
+
+/**
  * 属性访问信息
  */
 data class PropertyAccessInfo(
@@ -8,7 +17,8 @@ data class PropertyAccessInfo(
     val methodName: String,
     val methodDescriptor: String,
     val accessedProperties: Set<String>,
-    val modifiedProperties: Set<String>
+    val modifiedProperties: Set<String>,
+    val calledMethods: Set<MethodCallInfo>
 )
 
 /**

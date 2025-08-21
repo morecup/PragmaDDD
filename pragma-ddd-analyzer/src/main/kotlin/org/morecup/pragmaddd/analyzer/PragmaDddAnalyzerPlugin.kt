@@ -44,10 +44,14 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         val compileKotlinTask = project.tasks.findByName("compileKotlin")
         val compileJavaTask = project.tasks.findByName("compileJava")
         val classesTask = project.tasks.findByName("classes")
+        val processResourcesTask = project.tasks.findByName("processResources")
         
         // 分析任务依赖于编译任务
         compileKotlinTask?.let { analyzeTask.dependsOn(it) }
         compileJavaTask?.let { analyzeTask.dependsOn(it) }
+        
+        // 让 processResources 任务依赖分析任务，确保 JSON 文件在资源处理前生成
+        processResourcesTask?.dependsOn(analyzeTask)
         
         // 让 classes 任务依赖分析任务，这样 build 时会自动运行分析
         classesTask?.dependsOn(analyzeTask)

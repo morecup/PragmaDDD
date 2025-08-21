@@ -24,7 +24,7 @@ enum class AspectJMode {
  * 配置示例：
  * ```kotlin
  * pragmaDddAnalyzer {
- *     verbose.set(true)                                    // 启用详细输出
+ *     verbose.set(false)                                   // 不输出详细日志（推荐）
  *     outputFormat.set("JSON")                             // 输出格式：JSON 或 TXT
  *     outputFile.set("build/reports/ddd-analysis.json")    // 自定义输出文件
  *     classPaths.set(setOf("build/classes/kotlin/main"))   // 自定义类路径（通常不需要）
@@ -48,6 +48,8 @@ abstract class PragmaDddAnalyzerExtension {
 
     /**
      * 是否输出详细日志
+     * 包括AspectJ编译的详细过程、文件处理信息等
+     * 注意：启用此选项会产生大量日志输出
      * 默认值：false
      */
     abstract val verbose: Property<Boolean>

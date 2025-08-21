@@ -145,19 +145,56 @@ class CustomAspectJTaskConfigurator {
                 project.logger.debug("本地 pragma-ddd-aspect 模块不存在: ${e.message}")
             }
 
-            // 然后从 aspect 配置中获取
+            // 然后从 aspect 配置中获取，但只获取真正的aspect文件
             val aspectConfiguration = project.configurations.findByName("aspect")
             if (aspectConfiguration != null) {
-                // 使用 incoming.files 而不是直接访问 files 属性
-                val aspectFiles = aspectConfiguration.incoming.files.files
+                val aspectFiles = aspectConfiguration.incoming.files.files.filter { file ->
+                    // 只包含真正的aspect文件，排除AspectJ运行时和其他依赖
+                    val fileName = file.name.lowercase()
+                    val isAspectFile = when {
+                        // 包含我们自己的aspect模块
+                        fileName.contains("pragma-ddd-aspect") -> true
+                        // 排除AspectJ运行时库
+                        fileName.contains("aspectjrt") -> false
+                        // 排除Kotlin标准库
+                        fileName.contains("kotlin-stdlib") -> false
+                        // 排除注解库
+                        fileName.contains("annotations") -> false
+                        // 排除其他常见的非aspect依赖
+                        fileName.contains("slf4j") -> false
+                        fileName.contains("logback") -> false
+                        fileName.contains("jackson") -> false
+                        fileName.contains("spring") -> false
+                        // 默认情况下，如果文件名包含aspect相关关键词，则认为是aspect文件
+                        fileName.contains("aspect") -> true
+                        // 其他情况默认不包含
+                        else -> false
+                    }
+                    
+                    if (isAspectFile) {
+                        project.logger.info("包含 aspect 文件: ${file.absolutePath}")
+                    } else {
+                        project.logger.debug("排除非 aspect 文件: ${file.absolutePath}")
+                    }
+                    
+                    isAspectFile
+                }
+                
                 files.addAll(aspectFiles)
-                project.logger.info("从 aspect 配置获取到 ${aspectFiles.size} 个文件")
+                project.logger.info("从 aspect 配置过滤后获取到 ${aspectFiles.size} 个真正的aspect文件")
             }
         } catch (e: Exception) {
             project.logger.warn("获取 aspect 路径时出错: ${e.message}")
         }
 
-        return files
+        // 去重并记录最终结果
+        val uniqueFiles = files.distinct()
+        project.logger.warn("最终找到 ${uniqueFiles.size} 个aspect文件:")
+        uniqueFiles.forEach { file ->
+            project.logger.warn("  - ${file.absolutePath}")
+        }
+
+        return uniqueFiles
     }
 
     private fun getClassPathFiles(project: Project): List<File> {

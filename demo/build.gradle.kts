@@ -15,7 +15,7 @@ dependencies {
 
 // 可选的插件配置
 pragmaDddAnalyzer {
-    verbose.set(true)
+    verbose.set(false)  // 关闭详细输出，减少日志噪音
     outputFormat.set("JSON")
     aspectJMode.set(org.morecup.pragmaddd.analyzer.AspectJMode.ENABLED)  // 启用AspectJ织入
 }

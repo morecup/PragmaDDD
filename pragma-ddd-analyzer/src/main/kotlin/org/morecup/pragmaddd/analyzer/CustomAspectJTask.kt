@@ -6,7 +6,10 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
+import org.gradle.work.Incremental
+import org.gradle.work.InputChanges
 import java.io.File
+import java.security.MessageDigest
 import javax.inject.Inject
 
 /**
@@ -21,6 +24,7 @@ import javax.inject.Inject
 @CacheableTask
 abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     
+    @get:Incremental
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceFiles: ConfigurableFileCollection
@@ -29,8 +33,7 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val aspectPath: ConfigurableFileCollection
     
-    @get:InputFiles
-    @get:PathSensitive(PathSensitivity.RELATIVE)
+    @get:Classpath
     abstract val classPath: ConfigurableFileCollection
     
     @get:OutputDirectory
@@ -45,7 +48,7 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     @get:Input
     @get:Optional
     abstract val additionalArgs: ListProperty<String>
-    
+
     init {
         description = "自定义 AspectJ 织入任务，直接在原编译目录上进行织入"
         group = "aspectj"
@@ -74,11 +77,6 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         if (aspectFiles.isEmpty()) {
             logger.warn("没有找到aspect文件，跳过AspectJ织入")
             return
-        }
-        
-        logger.warn("找到 ${aspectFiles.size} 个aspect文件")
-        aspectFiles.forEach { file ->
-            logger.warn("  - ${file.absolutePath}")
         }
         
         try {
@@ -120,6 +118,10 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         // Aspect 路径
         val aspectPathFiles = aspectPath.files
         if (aspectPathFiles.isNotEmpty()) {
+            logger.warn("找到 ${aspectPathFiles.size} 个aspect文件")
+            aspectPathFiles.forEach { file ->
+                logger.warn("  - ${file.absolutePath}")
+            }
             args.addAll(listOf("-aspectpath", aspectPathFiles.joinToString(File.pathSeparator) { it.absolutePath }))
         }
         
@@ -148,7 +150,7 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     }
     
     private fun executeAjc(args: List<String>) {
-        logger.info("执行 AspectJ 编译，参数: ${args.take(10).joinToString(" ")}...")
+        logger.warn("执行 AspectJ 编译，参数: ${args.take(10).joinToString(" ")}...")
         
         try {
             // 在任务执行时才加载AspectJ类

@@ -18,6 +18,7 @@ import org.gradle.api.Project
  *     outputFormat.set("JSON") // JSON 或 TXT
  *     outputFile.set("build/reports/pragma-ddd-analysis.json")
  *     aspectJMode.set(AspectJMode.ENABLED) // AspectJ 织入模式
+ *     showWeaveInfo.set(false) // 是否显示 AspectJ 织入详细信息（默认false）
  * }
  * ```
  */
@@ -134,7 +135,10 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
             // 4. 关键：添加 aspect 依赖（AspectJ 特有的配置）
             // 首先确保 aspect 配置存在
             val aspectConfiguration = project.configurations.findByName("aspect") 
-                ?: project.configurations.create("aspect")
+                ?: project.configurations.create("aspect").apply {
+                    // 配置aspect配置不传递依赖，避免包含不必要的传递依赖
+                    isTransitive = false
+                }
             
             try {
                 project.dependencies.add("aspect", project.project(":pragma-ddd-aspect"))

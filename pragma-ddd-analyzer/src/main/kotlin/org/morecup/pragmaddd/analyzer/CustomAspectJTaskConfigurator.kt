@@ -34,7 +34,7 @@ class CustomAspectJTaskConfigurator {
         // 配置任务依赖关系
         configureTaskDependencies(project, customAspectJTask.get(), analyzeTask)
 
-        project.logger.warn("✓ 已配置自定义 AspectJ 任务: customAspectJWeave")
+        project.logger.info("✓ 已配置自定义 AspectJ 任务: customAspectJWeave")
     }
 
     private fun configureTaskInputsAndOutputs(project: Project, task: CustomAspectJTask) {
@@ -69,7 +69,7 @@ class CustomAspectJTaskConfigurator {
 
     private fun configureTaskOptions(task: CustomAspectJTask, extension: PragmaDddAnalyzerExtension) {
         task.verbose.set(extension.verbose.getOrElse(false))
-        task.showWeaveInfo.set(true)
+        task.showWeaveInfo.set(extension.showWeaveInfo.getOrElse(false))
 
         // 可以根据需要添加更多配置选项
         task.additionalArgs.set(listOf(
@@ -189,9 +189,11 @@ class CustomAspectJTaskConfigurator {
 
         // 去重并记录最终结果
         val uniqueFiles = files.distinct()
-        project.logger.warn("最终找到 ${uniqueFiles.size} 个aspect文件:")
-        uniqueFiles.forEach { file ->
-            project.logger.warn("  - ${file.absolutePath}")
+        project.logger.info("找到 ${uniqueFiles.size} 个aspect文件")
+        if (project.logger.isDebugEnabled) {
+            uniqueFiles.forEach { file ->
+                project.logger.debug("  - ${file.absolutePath}")
+            }
         }
 
         return uniqueFiles

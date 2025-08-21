@@ -55,7 +55,7 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         
         // 设置默认值
         verbose.convention(false)
-        showWeaveInfo.convention(true)
+        showWeaveInfo.convention(false)  // 默认不显示织入信息
         additionalArgs.convention(emptyList())
     }
     
@@ -63,26 +63,38 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     fun compile() {
         val outputDir = outputDirectory.get().asFile
         
-        logger.warn("开始执行自定义 AspectJ 织入...")
-        logger.warn("目标目录: ${outputDir.absolutePath}")
+        if (verbose.get()) {
+            logger.warn("开始执行自定义 AspectJ 织入...")
+            logger.warn("目标目录: ${outputDir.absolutePath}")
+        } else {
+            logger.info("执行 AspectJ 织入...")
+        }
         
         // 检查目标目录是否存在编译后的 class 文件
         if (!outputDir.exists() || outputDir.listFiles()?.isEmpty() == true) {
-            logger.warn("目标目录不存在或为空，跳过 AspectJ 织入")
+            if (verbose.get()) {
+                logger.warn("目标目录不存在或为空，跳过 AspectJ 织入")
+            }
             return
         }
         
         // 检查是否有aspect文件
         val aspectFiles = aspectPath.files
         if (aspectFiles.isEmpty()) {
-            logger.warn("没有找到aspect文件，跳过AspectJ织入")
+            if (verbose.get()) {
+                logger.warn("没有找到aspect文件，跳过AspectJ织入")
+            }
             return
         }
         
         try {
             // 直接在原本的编译输出目录上进行AspectJ织入
             performAspectJWeaving(outputDir)
-            logger.warn("AspectJ 织入完成，已直接修改原始 class 文件")
+            if (verbose.get()) {
+                logger.warn("AspectJ 织入完成，已直接修改原始 class 文件")
+            } else {
+                logger.info("AspectJ 织入完成")
+            }
         } catch (e: Exception) {
             logger.error("AspectJ 织入失败: ${e.message}", e)
             throw e
@@ -118,9 +130,11 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
         // Aspect 路径
         val aspectPathFiles = aspectPath.files
         if (aspectPathFiles.isNotEmpty()) {
-            logger.warn("找到 ${aspectPathFiles.size} 个aspect文件")
-            aspectPathFiles.forEach { file ->
-                logger.warn("  - ${file.absolutePath}")
+            if (verbose.get()) {
+                logger.warn("找到 ${aspectPathFiles.size} 个aspect文件")
+                aspectPathFiles.forEach { file ->
+                    logger.warn("  - ${file.absolutePath}")
+                }
             }
             args.addAll(listOf("-aspectpath", aspectPathFiles.joinToString(File.pathSeparator) { it.absolutePath }))
         }
@@ -150,13 +164,15 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
     }
     
     private fun executeAjc(args: List<String>) {
-        logger.warn("执行 AspectJ 编译，参数: ${args.take(10).joinToString(" ")}...")
+        if (verbose.get()) {
+            logger.warn("执行 AspectJ 编译，参数: ${args.take(10).joinToString(" ")}...")
+        }
         
         try {
             // 在任务执行时才加载AspectJ类
             executeAjcDirect(args)
         } catch (e: Exception) {
-            logger.warn("AspectJ 织入失败: ${e.message}")
+            logger.error("AspectJ 织入失败: ${e.message}")
             throw e
         }
     }

@@ -69,6 +69,13 @@ abstract class PragmaDddAnalyzerExtension {
      */
     abstract val aspectJMode: Property<AspectJMode>
 
+    /**
+     * 是否显示 AspectJ 织入详细信息
+     * 启用此选项会显示哪些类被织入了哪些切面
+     * 默认值：false
+     */
+    abstract val showWeaveInfo: Property<Boolean>
+
     init {
         // 设置默认值 - 将 JSON 文件生成到 resources 目录，这样会包含在 JAR 中
         outputFile.convention("build/resources/main/META-INF/pragma-ddd-analysis.json")
@@ -76,5 +83,6 @@ abstract class PragmaDddAnalyzerExtension {
         outputFormat.convention("JSON")
         classPaths.convention(emptySet())
         aspectJMode.convention(AspectJMode.ENABLED)
+        showWeaveInfo.convention(false)
     }
 }

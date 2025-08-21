@@ -8,7 +8,7 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 import org.babyfish.jimmer.sql.kt.fetcher.newFetcher
 import org.morecup.pragmaddd.core.preanalysis.analysisMethodsCalledFields
 import org.morecup.pragmaddd.core.proxy.DomainAggregateRoot
-import org.morecup.jimmerddd.pragmaddd.jimmer.proxy.DraftContextManager
+import org.morecup.pragmaddd.jimmer.proxy.DraftContextManager
 import org.morecup.pragmaddd.jimmer.domain.goods.Goods
 import org.morecup.pragmaddd.jimmer.domain.goods.GoodsRepository
 import org.springframework.stereotype.Repository

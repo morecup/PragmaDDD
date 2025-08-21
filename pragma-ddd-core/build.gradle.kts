@@ -28,5 +28,5 @@ kotlin {
 }
 
 noArg {
-    annotation("org.morecup.jimmerddd.betterddd.annotation.AggregateRoot")
+    annotation("org.morecup.pragmaddd.core.annotation.AggregateRoot")
 }

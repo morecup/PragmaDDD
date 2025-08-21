@@ -180,17 +180,30 @@ abstract class CustomAspectJTask @Inject constructor() : DefaultTask() {
             System.setSecurityManager(object : SecurityManager() {
                 override fun checkExit(status: Int) {
                     exitCode = status
-                    logger.warn("AspectJ 编译完成，退出码: $status")
+                    throw SecurityException("AspectJ 编译完成，退出码: $status")
                 }
                 override fun checkPermission(perm: java.security.Permission?) {}
             })
 
             mainMethod.invoke(null, args.toTypedArray())
 
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            // 处理反射调用中的异常
+            val cause = e.cause
+            if (cause is SecurityException) {
+                // 这是我们预期的 SecurityException，AspectJ 调用了 System.exit
+                if (exitCode != 0) {
+                    throw RuntimeException("AspectJ 编译失败，退出码: $exitCode", cause)
+                }
+                // exitCode == 0 表示成功，正常继续
+            } else {
+                // 其他异常，重新抛出
+                throw RuntimeException("AspectJ 编译过程中发生异常", cause ?: e)
+            }
         } catch (e: SecurityException) {
-            // 这是正常的，AspectJ 调用了 System.exit
+            // 直接捕获的 SecurityException（虽然通常不会到这里）
             if (exitCode != 0) {
-                throw RuntimeException("AspectJ 编译失败，退出码: $exitCode",e)
+                throw RuntimeException("AspectJ 编译失败，退出码: $exitCode", e)
             }
         } finally {
             System.setSecurityManager(originalSecurityManager)

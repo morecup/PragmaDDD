@@ -23,6 +23,8 @@ dependencies {
     // 预先声明 AspectJ 插件依赖，这样用户项目就能找到它
     implementation("io.freefair.gradle:aspectj-plugin:8.4")
 
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
+
     // Gradle API for plugin development
     implementation(gradleApi())
     

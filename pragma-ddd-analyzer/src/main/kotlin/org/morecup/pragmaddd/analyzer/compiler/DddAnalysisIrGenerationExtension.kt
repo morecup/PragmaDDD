@@ -121,9 +121,16 @@ class DddAnalysisIrGenerationExtension(
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         println("DDD Analyzer: IR Generation Extension CALLED - This should always appear!")
         System.err.println("DDD Analyzer: IR Generation Extension CALLED - This should always appear!")
+        System.out.println("DDD Analyzer: IR Generation Extension CALLED - This should always appear!")
+        
+        // Force flush all output streams
+        System.out.flush()
+        System.err.flush()
+        
         val startTime = System.currentTimeMillis()
         val sourceType = "main"
         println("DDD Analyzer: IR Generation Extension invoked for module: ${moduleFragment.name} (source type: $sourceType)")
+        System.err.println("DDD Analyzer: IR Generation Extension invoked for module: ${moduleFragment.name} (source type: $sourceType)")
         
         // Debug: Print current working directory and output directory
         val currentDir = System.getProperty("user.dir")

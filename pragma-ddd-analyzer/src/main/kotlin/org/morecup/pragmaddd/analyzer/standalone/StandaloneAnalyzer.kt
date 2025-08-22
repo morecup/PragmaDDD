@@ -86,17 +86,17 @@ class StandaloneAnalyzer {
                         propertyAccesses = listOf(
                             PropertyAccessMetadata(
                                 propertyName = "name",
-                                accessType = PropertyAccessType.READ,
+                                accessType = PropertyAccessType.GET,
                                 ownerClass = "com.example.demo.domain.User"
                             ),
                             PropertyAccessMetadata(
                                 propertyName = "name",
-                                accessType = PropertyAccessType.WRITE,
+                                accessType = PropertyAccessType.SET,
                                 ownerClass = "com.example.demo.domain.User"
                             ),
                             PropertyAccessMetadata(
                                 propertyName = "email",
-                                accessType = PropertyAccessType.WRITE,
+                                accessType = PropertyAccessType.SET,
                                 ownerClass = "com.example.demo.domain.User"
                             )
                         ),

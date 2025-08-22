@@ -38,6 +38,10 @@ class MethodAnalyzerImpl(
     private val enableMethodAnalysis: Boolean = true
 ) : MethodAnalyzer {
     
+    init {
+        System.err.println("MethodAnalyzer: Initialized with enableMethodAnalysis = $enableMethodAnalysis")
+    }
+    
     /**
      * Analyzes a method and generates comprehensive method metadata
      * Extracts method calls, property accesses, parameters, and documentation
@@ -58,8 +62,45 @@ class MethodAnalyzerImpl(
             val isPrivate = !irFunction.visibility.isPublicAPI
             
             // Extract method calls and property accesses using dedicated methods (if enabled)
+            System.err.println("MethodAnalyzer: analyzeMethod for ${irFunction.name}, enableMethodAnalysis = $enableMethodAnalysis")
             val methodCalls = if (enableMethodAnalysis) extractMethodCalls(irFunction) else emptyList()
-            val propertyAccesses = if (enableMethodAnalysis) extractPropertyAccess(irFunction) else emptyList()
+            val propertyAccesses = if (enableMethodAnalysis) {
+                val accesses = extractPropertyAccess(irFunction).toMutableList()
+                
+                // Also extract property accesses from method calls
+                methodCalls.forEach { methodCall ->
+                    val methodName = methodCall.targetMethod
+                    val receiverType = methodCall.receiverType
+                    
+                    when {
+                        // Kotlin setter pattern: <set-propertyName>
+                        methodName.startsWith("<set-") && methodName.endsWith(">") -> {
+                            val propertyName = methodName.removePrefix("<set-").removeSuffix(">")
+                            accesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = propertyName,
+                                    accessType = PropertyAccessType.SET,
+                                    ownerClass = receiverType
+                                )
+                            )
+                        }
+                        
+                        // Kotlin getter pattern: <get-propertyName>
+                        methodName.startsWith("<get-") && methodName.endsWith(">") -> {
+                            val propertyName = methodName.removePrefix("<get-").removeSuffix(">")
+                            accesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = propertyName,
+                                    accessType = PropertyAccessType.GET,
+                                    ownerClass = receiverType
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                accesses
+            } else emptyList()
             
             val documentation = extractDocumentation(irFunction)
             val annotations = extractMethodAnnotations(irFunction)
@@ -119,7 +160,77 @@ class MethodAnalyzerImpl(
      */
     override fun extractPropertyAccess(irFunction: IrSimpleFunction): List<PropertyAccessMetadata> {
         return try {
-            propertyAnalyzer.extractPropertyAccess(irFunction)
+            // First try the dedicated PropertyAnalyzer
+            System.err.println("MethodAnalyzer: Calling PropertyAnalyzer for method ${irFunction.name}")
+            val propertyAccesses = propertyAnalyzer.extractPropertyAccess(irFunction).toMutableList()
+            System.err.println("MethodAnalyzer: PropertyAnalyzer returned ${propertyAccesses.size} accesses")
+            
+            // Add property access inference for common getter/setter patterns
+            val inferredAccesses = inferPropertyAccessFromMethodPattern(irFunction)
+            propertyAccesses.addAll(inferredAccesses)
+            
+            // Also extract property accesses from method calls as a fallback
+            // Use a separate collector to avoid recursion
+            val methodCallsCollector = MethodCallsCollector(errorReporter, irFunction.name.asString())
+            irFunction.body?.acceptChildrenVoid(methodCallsCollector)
+            val methodCalls = methodCallsCollector.methodCalls
+            
+            methodCalls.forEach { methodCall ->
+                val methodName = methodCall.targetMethod
+                val receiverType = methodCall.receiverType
+                
+                when {
+                    // Kotlin setter pattern: <set-propertyName>
+                    methodName.startsWith("<set-") && methodName.endsWith(">") -> {
+                        val propertyName = methodName.removePrefix("<set-").removeSuffix(">")
+                        propertyAccesses.add(
+                            PropertyAccessMetadata(
+                                propertyName = propertyName,
+                                accessType = PropertyAccessType.SET,
+                                ownerClass = receiverType
+                            )
+                        )
+                    }
+                    
+                    // Kotlin getter pattern: <get-propertyName>
+                    methodName.startsWith("<get-") && methodName.endsWith(">") -> {
+                        val propertyName = methodName.removePrefix("<get-").removeSuffix(">")
+                        propertyAccesses.add(
+                            PropertyAccessMetadata(
+                                propertyName = propertyName,
+                                accessType = PropertyAccessType.GET,
+                                ownerClass = receiverType
+                            )
+                        )
+                    }
+                    
+                    // Java-style getter: getPropertyName()
+                    methodName.startsWith("get") && methodCall.parameters.isEmpty() -> {
+                        val propertyName = methodName.removePrefix("get").replaceFirstChar { it.lowercase() }
+                        propertyAccesses.add(
+                            PropertyAccessMetadata(
+                                propertyName = propertyName,
+                                accessType = PropertyAccessType.GET,
+                                ownerClass = receiverType
+                            )
+                        )
+                    }
+                    
+                    // Java-style setter: setPropertyName(value)
+                    methodName.startsWith("set") && methodCall.parameters.size == 1 -> {
+                        val propertyName = methodName.removePrefix("set").replaceFirstChar { it.lowercase() }
+                        propertyAccesses.add(
+                            PropertyAccessMetadata(
+                                propertyName = propertyName,
+                                accessType = PropertyAccessType.SET,
+                                ownerClass = receiverType
+                            )
+                        )
+                    }
+                }
+            }
+            
+            propertyAccesses
         } catch (e: Exception) {
             val className = irFunction.parent.let { parent ->
                 if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
@@ -311,6 +422,75 @@ class MethodAnalyzerImpl(
                         elementName = methodName
                     )
                 )
+            }
+        }
+    }
+    
+    /**
+     * Infers property access from method naming patterns and signatures
+     */
+    private fun inferPropertyAccessFromMethodPattern(irFunction: IrSimpleFunction): List<PropertyAccessMetadata> {
+        val methodName = irFunction.name.asString()
+        val accesses = mutableListOf<PropertyAccessMetadata>()
+        
+        // Get the class that contains this method
+        val ownerClass = irFunction.parent.let { parent ->
+            if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
+                parent.fqNameWhenAvailable?.asString()
+            } else null
+        }
+        
+        // Infer property access from getter methods
+        if (methodName.startsWith("get") && irFunction.valueParameters.isEmpty()) {
+            val propertyName = methodName.removePrefix("get").replaceFirstChar { it.lowercase() }
+            
+            // Check if there's a corresponding property in the class
+            if (hasCorrespondingProperty(irFunction, propertyName)) {
+                accesses.add(
+                    PropertyAccessMetadata(
+                        propertyName = propertyName,
+                        accessType = PropertyAccessType.GET,
+                        ownerClass = ownerClass
+                    )
+                )
+            }
+        }
+        
+        // Infer property access from setter methods
+        if (methodName.startsWith("set") && irFunction.valueParameters.size == 1) {
+            val propertyName = methodName.removePrefix("set").replaceFirstChar { it.lowercase() }
+            
+            // Check if there's a corresponding property in the class
+            if (hasCorrespondingProperty(irFunction, propertyName)) {
+                accesses.add(
+                    PropertyAccessMetadata(
+                        propertyName = propertyName,
+                        accessType = PropertyAccessType.SET,
+                        ownerClass = ownerClass
+                    )
+                )
+            }
+        }
+        
+        return accesses
+    }
+    
+    /**
+     * Checks if there's a corresponding property in the class for the given property name
+     */
+    private fun hasCorrespondingProperty(irFunction: IrSimpleFunction, propertyName: String): Boolean {
+        val parentClass = irFunction.parent as? org.jetbrains.kotlin.ir.declarations.IrClass ?: return false
+        
+        // Check if there's a property with this name
+        return parentClass.declarations.any { declaration ->
+            when (declaration) {
+                is org.jetbrains.kotlin.ir.declarations.IrProperty -> {
+                    declaration.name.asString() == propertyName
+                }
+                is org.jetbrains.kotlin.ir.declarations.IrField -> {
+                    declaration.name.asString() == propertyName
+                }
+                else -> false
             }
         }
     }

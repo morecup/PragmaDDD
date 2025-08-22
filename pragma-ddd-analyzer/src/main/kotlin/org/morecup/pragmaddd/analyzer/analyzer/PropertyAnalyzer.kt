@@ -32,9 +32,111 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
      * Extracts all property access patterns from method body using comprehensive analysis
      */
     override fun extractPropertyAccess(irFunction: IrSimpleFunction): List<PropertyAccessMetadata> {
+        val methodName = irFunction.name.asString()
+        val className = irFunction.parent.let { parent ->
+            if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
+                parent.name.asString()
+            } else "Unknown"
+        }
+        
+        val accesses = mutableListOf<PropertyAccessMetadata>()
+        
+        // First, try to collect property accesses from IR
         val propertyAccessCollector = PropertyAccessCollector()
         irFunction.body?.acceptChildrenVoid(propertyAccessCollector)
-        return propertyAccessCollector.propertyAccesses
+        accesses.addAll(propertyAccessCollector.propertyAccesses)
+        
+        // Then, try to infer property access from method patterns
+        val inferredAccesses = inferPropertyAccessFromMethodPattern(irFunction, className)
+        accesses.addAll(inferredAccesses)
+        
+        return accesses.distinctBy { "${it.propertyName}_${it.accessType}_${it.ownerClass}" }
+    }
+    
+    /**
+     * Infers property access from method naming patterns and signatures
+     */
+    private fun inferPropertyAccessFromMethodPattern(irFunction: IrSimpleFunction, className: String): List<PropertyAccessMetadata> {
+        val methodName = irFunction.name.asString()
+        val accesses = mutableListOf<PropertyAccessMetadata>()
+        
+        // Get the class that contains this method
+        val ownerClass = irFunction.parent.let { parent ->
+            if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
+                parent.fqNameWhenAvailable?.asString()
+            } else null
+        }
+        
+        // Infer property access from getter methods
+        if (methodName.startsWith("get") && irFunction.valueParameters.isEmpty()) {
+            val propertyName = methodName.removePrefix("get").replaceFirstChar { it.lowercase() }
+            
+            // Check if there's a corresponding property in the class
+            if (hasCorrespondingProperty(irFunction, propertyName)) {
+                accesses.add(
+                    PropertyAccessMetadata(
+                        propertyName = propertyName,
+                        accessType = PropertyAccessType.GET,
+                        ownerClass = ownerClass
+                    )
+                )
+            }
+        }
+        
+        // Infer property access from setter methods
+        if (methodName.startsWith("set") && irFunction.valueParameters.size == 1) {
+            val propertyName = methodName.removePrefix("set").replaceFirstChar { it.lowercase() }
+            
+            // Check if there's a corresponding property in the class
+            if (hasCorrespondingProperty(irFunction, propertyName)) {
+                accesses.add(
+                    PropertyAccessMetadata(
+                        propertyName = propertyName,
+                        accessType = PropertyAccessType.SET,
+                        ownerClass = ownerClass
+                    )
+                )
+            }
+        }
+        
+        // Infer property access from Kotlin property getter methods (no "get" prefix)
+        if (!methodName.startsWith("get") && !methodName.startsWith("set") && 
+            !methodName.startsWith("<") && irFunction.valueParameters.isEmpty() &&
+            irFunction.returnType.getClass()?.name?.asString() != "Unit") {
+            
+            // This might be a Kotlin property getter
+            if (hasCorrespondingProperty(irFunction, methodName)) {
+                accesses.add(
+                    PropertyAccessMetadata(
+                        propertyName = methodName,
+                        accessType = PropertyAccessType.GET,
+                        ownerClass = ownerClass
+                    )
+                )
+            }
+        }
+        
+        return accesses
+    }
+    
+    /**
+     * Checks if there's a corresponding property in the class for the given property name
+     */
+    private fun hasCorrespondingProperty(irFunction: IrSimpleFunction, propertyName: String): Boolean {
+        val parentClass = irFunction.parent as? org.jetbrains.kotlin.ir.declarations.IrClass ?: return false
+        
+        // Check if there's a property with this name
+        return parentClass.declarations.any { declaration ->
+            when (declaration) {
+                is org.jetbrains.kotlin.ir.declarations.IrProperty -> {
+                    declaration.name.asString() == propertyName
+                }
+                is org.jetbrains.kotlin.ir.declarations.IrField -> {
+                    declaration.name.asString() == propertyName
+                }
+                else -> false
+            }
+        }
     }
     
     /**
@@ -81,10 +183,12 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     } else null
                 }
                 
+                System.err.println("PropertyAnalyzer: Found direct field GET access - property: $propertyName, owner: $ownerClass")
+                
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.READ,
+                        accessType = PropertyAccessType.GET,
                         ownerClass = ownerClass
                     )
                 )
@@ -105,10 +209,12 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     } else null
                 }
                 
+                System.err.println("PropertyAnalyzer: Found direct field SET access - property: $propertyName, owner: $ownerClass")
+                
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.WRITE,
+                        accessType = PropertyAccessType.SET,
                         ownerClass = ownerClass
                     )
                 )
@@ -122,24 +228,23 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
             super.visitGetValue(expression)
             
             try {
-                // Handle property access through getter calls
+                // Handle local variable and parameter access - check if it's a property backing field
                 val symbol = expression.symbol
-                if (symbol.owner is org.jetbrains.kotlin.ir.declarations.IrProperty) {
-                    val property = symbol.owner as org.jetbrains.kotlin.ir.declarations.IrProperty
-                    val propertyName = property.name.asString()
-                    val ownerClass = property.parent.let { parent ->
-                        if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
-                            parent.fqNameWhenAvailable?.asString()
-                        } else null
+                val valueDeclaration = symbol.owner
+                
+                System.err.println("PropertyAnalyzer: visitGetValue - symbol: ${symbol.owner.name}, type: ${valueDeclaration::class.simpleName}")
+                
+                // Check if this is accessing a property backing field
+                if (valueDeclaration is org.jetbrains.kotlin.ir.declarations.IrValueParameter) {
+                    // This might be accessing 'this' or a parameter - we're interested in 'this' for property access
+                    if (valueDeclaration.name.asString() == "<this>") {
+                        // This is accessing 'this', but we need to look at the context to determine property access
+                        // This will be handled by visitCall for property getter calls
+                        println("PropertyAnalyzer: Found 'this' access")
                     }
-                    
-                    propertyAccesses.add(
-                        PropertyAccessMetadata(
-                            propertyName = propertyName,
-                            accessType = PropertyAccessType.READ,
-                            ownerClass = ownerClass
-                        )
-                    )
+                } else if (valueDeclaration is org.jetbrains.kotlin.ir.declarations.IrVariable) {
+                    val variableName = valueDeclaration.name.asString()
+                    println("PropertyAnalyzer: Found variable access: $variableName")
                 }
             } catch (e: Exception) {
                 // Log error but continue processing other accesses
@@ -151,24 +256,14 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
             super.visitSetValue(expression)
             
             try {
-                // Handle property writes through setter calls
+                // Handle property writes through direct assignment
                 val symbol = expression.symbol
-                if (symbol.owner is org.jetbrains.kotlin.ir.declarations.IrProperty) {
-                    val property = symbol.owner as org.jetbrains.kotlin.ir.declarations.IrProperty
-                    val propertyName = property.name.asString()
-                    val ownerClass = property.parent.let { parent ->
-                        if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
-                            parent.fqNameWhenAvailable?.asString()
-                        } else null
-                    }
-                    
-                    propertyAccesses.add(
-                        PropertyAccessMetadata(
-                            propertyName = propertyName,
-                            accessType = PropertyAccessType.WRITE,
-                            ownerClass = ownerClass
-                        )
-                    )
+                val valueDeclaration = symbol.owner
+                
+                // Check if this is a property assignment
+                if (valueDeclaration is org.jetbrains.kotlin.ir.declarations.IrVariable) {
+                    val variableName = valueDeclaration.name.asString()
+                    // For now, we'll rely on visitCall to catch property setter calls
                 }
             } catch (e: Exception) {
                 // Log error but continue processing other accesses
@@ -180,32 +275,109 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
             super.visitCall(expression)
             
             try {
-                // Detect getter/setter method calls
-                val methodName = expression.symbol.owner.name.asString()
+                val function = expression.symbol.owner
+                val methodName = function.name.asString()
+                
+                // Get the receiver type (the class that owns the property)
                 val receiverType = expression.dispatchReceiver?.type?.getClass()?.fqNameWhenAvailable?.asString()
                 
-                // Check if this is a getter call (starts with "get" and has no parameters)
-                if (methodName.startsWith("get") && expression.valueArgumentsCount == 0) {
-                    val propertyName = methodName.removePrefix("get").replaceFirstChar { it.lowercase() }
-                    propertyAccesses.add(
-                        PropertyAccessMetadata(
-                            propertyName = propertyName,
-                            accessType = PropertyAccessType.READ,
-                            ownerClass = receiverType
-                        )
-                    )
-                }
+                System.err.println("PropertyAnalyzer: Processing call to method '$methodName' on receiver '$receiverType'")
                 
-                // Check if this is a setter call (starts with "set" and has one parameter)
-                if (methodName.startsWith("set") && expression.valueArgumentsCount == 1) {
-                    val propertyName = methodName.removePrefix("set").replaceFirstChar { it.lowercase() }
+                // Check if this is a property getter call
+                if (function.correspondingPropertySymbol != null) {
+                    val property = function.correspondingPropertySymbol!!.owner
+                    val propertyName = property.name.asString()
+                    
+                    // Determine if this is a getter or setter based on the function
+                    val accessType = if (function == property.getter) {
+                        PropertyAccessType.GET
+                    } else if (function == property.setter) {
+                        PropertyAccessType.SET
+                    } else {
+                        PropertyAccessType.GET // Default to GET if unclear
+                    }
+                    
+                    println("PropertyAnalyzer: Found property access via correspondingPropertySymbol - property: $propertyName, access: $accessType")
+                    
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.WRITE,
+                            accessType = accessType,
                             ownerClass = receiverType
                         )
                     )
+                } else {
+                    // Fallback: detect by method name patterns
+                    when {
+                        // Special Kotlin setter pattern (e.g., "<set-propertyName>")
+                        methodName.startsWith("<set-") && methodName.endsWith(">") -> {
+                            val propertyName = methodName.removePrefix("<set-").removeSuffix(">")
+                            println("PropertyAnalyzer: Found Kotlin setter pattern - property: $propertyName")
+                            propertyAccesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = propertyName,
+                                    accessType = PropertyAccessType.SET,
+                                    ownerClass = receiverType
+                                )
+                            )
+                        }
+                        
+                        // Special Kotlin getter pattern (e.g., "<get-propertyName>")
+                        methodName.startsWith("<get-") && methodName.endsWith(">") -> {
+                            val propertyName = methodName.removePrefix("<get-").removeSuffix(">")
+                            println("PropertyAnalyzer: Found Kotlin getter pattern - property: $propertyName")
+                            propertyAccesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = propertyName,
+                                    accessType = PropertyAccessType.GET,
+                                    ownerClass = receiverType
+                                )
+                            )
+                        }
+                        
+                        // Java-style getter (starts with "get", no parameters)
+                        methodName.startsWith("get") && expression.valueArgumentsCount == 0 -> {
+                            val propertyName = methodName.removePrefix("get").replaceFirstChar { it.lowercase() }
+                            println("PropertyAnalyzer: Found Java-style getter - property: $propertyName")
+                            propertyAccesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = propertyName,
+                                    accessType = PropertyAccessType.GET,
+                                    ownerClass = receiverType
+                                )
+                            )
+                        }
+                        
+                        // Java-style setter (starts with "set", one parameter)
+                        methodName.startsWith("set") && expression.valueArgumentsCount == 1 -> {
+                            val propertyName = methodName.removePrefix("set").replaceFirstChar { it.lowercase() }
+                            println("PropertyAnalyzer: Found Java-style setter - property: $propertyName")
+                            propertyAccesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = propertyName,
+                                    accessType = PropertyAccessType.SET,
+                                    ownerClass = receiverType
+                                )
+                            )
+                        }
+                        
+                        // Kotlin property getter (no "get" prefix, no parameters)
+                        expression.valueArgumentsCount == 0 && !methodName.startsWith("get") && !methodName.startsWith("set") && !methodName.startsWith("<") -> {
+                            // This might be a Kotlin property getter
+                            println("PropertyAnalyzer: Found potential Kotlin property getter - property: $methodName")
+                            propertyAccesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = methodName,
+                                    accessType = PropertyAccessType.GET,
+                                    ownerClass = receiverType
+                                )
+                            )
+                        }
+                        
+                        else -> {
+                            println("PropertyAnalyzer: Method '$methodName' does not match any property access pattern")
+                        }
+                    }
                 }
                 
                 // Handle method chains - if the receiver is another method call
@@ -219,6 +391,52 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
             } catch (e: Exception) {
                 // Log error but continue processing other calls
                 println("Error processing method call for property access: ${e.message}")
+            }
+        }
+        
+        override fun visitReturn(expression: IrReturn) {
+            super.visitReturn(expression)
+            
+            try {
+                System.err.println("PropertyAnalyzer: Found return statement")
+                
+                // Check if the return value is a property access
+                val returnValue = expression.value
+                when (returnValue) {
+                    is IrGetField -> {
+                        val propertyName = returnValue.symbol.owner.name.asString()
+                        val ownerClass = returnValue.symbol.owner.parent.let { parent ->
+                            if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
+                                parent.fqNameWhenAvailable?.asString()
+                            } else null
+                        }
+                        
+                        println("PropertyAnalyzer: Return statement accesses field - property: $propertyName, owner: $ownerClass")
+                        
+                        propertyAccesses.add(
+                            PropertyAccessMetadata(
+                                propertyName = propertyName,
+                                accessType = PropertyAccessType.GET,
+                                ownerClass = ownerClass
+                            )
+                        )
+                    }
+                    is IrCall -> {
+                        // The return value is a method call, analyze it for property access
+                        println("PropertyAnalyzer: Return statement calls method: ${returnValue.symbol.owner.name}")
+                        returnValue.acceptChildrenVoid(this)
+                    }
+                    is IrGetValue -> {
+                        val symbol = returnValue.symbol
+                        val valueDeclaration = symbol.owner
+                        println("PropertyAnalyzer: Return statement gets value: ${valueDeclaration.name}")
+                    }
+                    else -> {
+                        println("PropertyAnalyzer: Return statement with type: ${returnValue::class.simpleName}")
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error processing return statement: ${e.message}")
             }
         }
     }
@@ -243,7 +461,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.READ,
+                        accessType = PropertyAccessType.GET,
                         ownerClass = ownerClass
                     )
                 )
@@ -266,7 +484,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.WRITE,
+                        accessType = PropertyAccessType.SET,
                         ownerClass = ownerClass
                     )
                 )
@@ -295,7 +513,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.READ,
+                            accessType = PropertyAccessType.GET,
                             ownerClass = receiverType
                         )
                     )
@@ -307,7 +525,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.WRITE,
+                            accessType = PropertyAccessType.SET,
                             ownerClass = receiverType
                         )
                     )
@@ -319,7 +537,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = methodName,
-                            accessType = PropertyAccessType.READ,
+                            accessType = PropertyAccessType.GET,
                             ownerClass = receiverType
                         )
                     )
@@ -355,7 +573,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                                 propertyAccesses.add(
                                     PropertyAccessMetadata(
                                         propertyName = propertyName,
-                                        accessType = PropertyAccessType.READ,
+                                        accessType = PropertyAccessType.GET,
                                         ownerClass = receiverType
                                     )
                                 )
@@ -364,7 +582,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                                 propertyAccesses.add(
                                     PropertyAccessMetadata(
                                         propertyName = receiverMethodName,
-                                        accessType = PropertyAccessType.READ,
+                                        accessType = PropertyAccessType.GET,
                                         ownerClass = receiverType
                                     )
                                 )
@@ -385,7 +603,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             propertyAccesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
-                                    accessType = PropertyAccessType.READ,
+                                    accessType = PropertyAccessType.GET,
                                     ownerClass = ownerClass
                                 )
                             )
@@ -402,7 +620,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.READ,
+                            accessType = PropertyAccessType.GET,
                             ownerClass = receiverType
                         )
                     )
@@ -411,7 +629,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.WRITE,
+                            accessType = PropertyAccessType.SET,
                             ownerClass = receiverType
                         )
                     )

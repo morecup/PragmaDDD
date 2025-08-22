@@ -143,8 +143,8 @@ class ClassAnalyzerTest {
     @Test
     fun `should verify PropertyAccessType enum is available`() {
         // Test that PropertyAccessType enum is available
-        val read = PropertyAccessType.READ
-        val write = PropertyAccessType.WRITE
+        val read = PropertyAccessType.GET
+        val write = PropertyAccessType.SET
 
         assertNotNull(read)
         assertNotNull(write)
@@ -191,13 +191,13 @@ class ClassAnalyzerTest {
         // Test PropertyAccessMetadata structure
         val propertyAccessMetadata = PropertyAccessMetadata(
             propertyName = "testProperty",
-            accessType = PropertyAccessType.READ,
+            accessType = PropertyAccessType.GET,
             ownerClass = "TestClass"
         )
         
         assertNotNull(propertyAccessMetadata)
         assertEquals("testProperty", propertyAccessMetadata.propertyName)
-        assertEquals(PropertyAccessType.READ, propertyAccessMetadata.accessType)
+        assertEquals(PropertyAccessType.GET, propertyAccessMetadata.accessType)
         assertEquals("TestClass", propertyAccessMetadata.ownerClass)
     }
 

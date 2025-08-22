@@ -1,8 +1,14 @@
+//import sun.jvmstat.monitor.MonitoredVmUtil.mainClass
 
 plugins {
     kotlin("jvm") version "2.1.0"
     `java-gradle-plugin`
+    `maven-publish`
+    application
 }
+
+group = "org.morecup.pragmaddd"
+version = "0.0.1"
 
 repositories {
     mavenLocal()
@@ -10,19 +16,30 @@ repositories {
 }
 
 dependencies {
-    implementation("org.ow2.asm:asm:9.6")
-    implementation("org.ow2.asm:asm-commons:9.6")
-    implementation("org.ow2.asm:asm-util:9.6")
+    // Kotlin compiler plugin dependencies
+    implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.1.0")
+    
+    // Kotlin Gradle plugin dependencies
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.0")
+    
+    // Kotlin reflection for bytecode analysis
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.1.0")
+    
+    // JSON serialization
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
-
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
+    
+    // Core module for DDD annotations - using local Maven repository
+    // implementation(project(":pragma-ddd-core"))
 
     // Gradle API for plugin development
     implementation(gradleApi())
     
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-    testImplementation("org.assertj:assertj-core:3.24.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.1.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
+    testImplementation("org.mockito:mockito-core:5.5.0")
 }
 
 gradlePlugin {
@@ -40,35 +57,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
-// 生成版本属性文件
-val generateVersionProperties by tasks.registering {
-    val outputDir = file("src/main/resources")
-    outputs.dir(outputDir)
-    
-    doLast {
-        val versionFile = file("src/main/resources/pragma-ddd-analyzer-version.properties")
-        versionFile.parentFile.mkdirs()
-        versionFile.writeText("""
-            version=${project.version}
-            name=${project.name}
-            group=${project.group}
-        """.trimIndent())
-    }
-}
-
-// 确保在编译前生成版本文件
-tasks.processResources {
-    dependsOn(generateVersionProperties)
-}
-
-// 确保版本信息包含在 JAR 的 MANIFEST.MF 中
-tasks.jar {
-    dependsOn(generateVersionProperties)
-    manifest {
-        attributes(
-            "Implementation-Title" to "Pragma DDD Analyzer",
-            "Implementation-Version" to project.version,
-            "Implementation-Vendor" to "MoreCup"
-        )
-    }
-}
+//// Configure application main class
+//application {
+//    mainClass.set("org.morecup.pragmaddd.analyzer.standalone.StandaloneAnalyzerKt")
+//}

@@ -5,7 +5,7 @@ plugins {
     id("com.google.devtools.ksp") version "2.1.0-1.0.29"
     id("org.jetbrains.kotlin.plugin.allopen") version "1.9.22" // 使用与Kotlin版本匹配的插件版本
 //    id("net.bytebuddy.byte-buddy-gradle-plugin") version "1.14.18"
-    id("org.morecup.pragmaddd.pragma-ddd-analyzer")
+//    id("org.morecup.pragmaddd.pragma-ddd-analyzer")
     kotlin("plugin.noarg") version "1.8.0"
 }
 

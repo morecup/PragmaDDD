@@ -11,20 +11,19 @@ abstract class PragmaDddAnalyzerExtension {
     
     /**
      * Output directory for generated JSON files
-     * Default: "build/generated/resources/main" for JAR packaging
-     * Can be absolute or relative path. Relative paths are resolved against project directory.
+     * FIXED PATH: "build/generated/pragmaddd/main/resources" - NOT CONFIGURABLE BY USERS
+     * This is an internal property and should not be modified by users.
      */
-    abstract val outputDirectory: Property<String>
+    internal abstract val outputDirectory: Property<String>
     
 
     
     /**
      * JSON file naming convention
-     * Default: "ddd-analysis"
-     * Files will be named: {jsonFileNaming}-main.json and {jsonFileNaming}-test.json
-     * Must not contain filesystem-invalid characters: / \ : * ? " < > |
+     * FIXED FILENAME: "domain-analyzer.json" - NOT CONFIGURABLE BY USERS
+     * This is an internal property and should not be modified by users.
      */
-    abstract val jsonFileNaming: Property<String>
+    internal abstract val jsonFileNaming: Property<String>
     
     /**
      * Enable method analysis (method calls and property access within methods)
@@ -67,8 +66,8 @@ abstract class PragmaDddAnalyzerExtension {
      * @throws IllegalArgumentException if configuration is invalid
      */
     fun validate() {
-        validateOutputDirectory()
-        validateJsonFileNaming()
+        // Note: outputDirectory and jsonFileNaming are now fixed and don't need validation
+        // Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
         validateMaxClassesPerCompilation()
         validateAnalysisFeatureConfiguration()
     }
@@ -154,8 +153,7 @@ abstract class PragmaDddAnalyzerExtension {
     fun getConfigurationSummary(): String {
         return buildString {
             appendLine("Pragma DDD Analyzer Configuration:")
-            appendLine("  Output Directory: ${outputDirectory.orNull}")
-            appendLine("  JSON File Naming: ${jsonFileNaming.orNull}")
+            appendLine("  Output Path: $FIXED_COMPLETE_JSON_PATH (FIXED - NOT CONFIGURABLE)")
             appendLine("  Enable Method Analysis: ${enableMethodAnalysis.orNull}")
             appendLine("  Enable Property Analysis: ${enablePropertyAnalysis.orNull}")
             appendLine("  Enable Documentation Extraction: ${enableDocumentationExtraction.orNull}")
@@ -165,23 +163,38 @@ abstract class PragmaDddAnalyzerExtension {
     }
     
     /**
-     * Returns the resolved output directory as a File object
+     * Returns the resolved output directory as a File object (always fixed path)
+     * Fixed path: build/generated/pragmaddd/main/resources - NOT CONFIGURABLE
      * @param projectDir the project directory to resolve relative paths against
      */
     fun getResolvedOutputDirectory(projectDir: File): File {
-        val outputDir = outputDirectory.get()
-        return if (File(outputDir).isAbsolute) {
-            File(outputDir)
-        } else {
-            File(projectDir, outputDir)
-        }
+        // Always return the FIXED output directory - NOT configurable by users
+        return File(projectDir, FIXED_OUTPUT_DIRECTORY)
     }
     
     /**
-     * Returns the main source JSON file name
+     * Returns the main source JSON file name (always fixed)
+     * Fixed filename: domain-analyzer.json - NOT CONFIGURABLE
      */
     fun getMainSourceJsonFileName(): String {
-        return "${jsonFileNaming.get()}-main.json"
+        return FIXED_JSON_FILENAME
+    }
+    
+    /**
+     * Returns the complete fixed path for the JSON file
+     * Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+     * This path is NOT configurable by users
+     */
+    fun getFixedJsonFilePath(): String {
+        return FIXED_COMPLETE_JSON_PATH
+    }
+    
+    companion object {
+        // Fixed paths that cannot be configured by users
+        const val FIXED_OUTPUT_DIRECTORY = "build/generated/pragmaddd/main/resources"
+        const val FIXED_JSON_FILENAME = "domain-analyzer.json"
+        const val FIXED_META_INF_PATH = "META-INF/pragma-ddd-analyzer"
+        const val FIXED_COMPLETE_JSON_PATH = "$FIXED_OUTPUT_DIRECTORY/$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME"
     }
     
     /**

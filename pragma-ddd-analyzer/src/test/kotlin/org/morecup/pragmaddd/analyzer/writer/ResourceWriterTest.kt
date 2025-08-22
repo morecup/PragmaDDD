@@ -28,12 +28,11 @@ class ResourceWriterTest {
         // When
         resourceWriter.writeMainSourcesJson(json, outputDirectory, fileName)
         
-        // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
-        val file = expectedPath.toFile()
+        // Then - writeMainSourcesJson now always uses fixed path, ignoring parameters
+        val expectedPath = File("build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json")
         
-        assertTrue(file.exists())
-        assertEquals(json, file.readText())
+        assertTrue(expectedPath.exists())
+        assertEquals(json, expectedPath.readText())
     }
     
     @Test
@@ -105,13 +104,12 @@ class ResourceWriterTest {
         // When
         resourceWriter.writeMainSourcesJson(json, outputDirectory, fileName)
         
-        // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
-        val file = expectedPath.toFile()
+        // Then - writeMainSourcesJson now always uses fixed path
+        val expectedPath = File("build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json")
         
-        assertTrue(file.exists())
-        assertTrue(file.parentFile.exists())
-        assertEquals(json, file.readText())
+        assertTrue(expectedPath.exists())
+        assertTrue(expectedPath.parentFile.exists())
+        assertEquals(json, expectedPath.readText())
     }
     
     @Test
@@ -125,14 +123,12 @@ class ResourceWriterTest {
         resourceWriter.writeMainSourcesJson(json1, outputDirectory, "file1.json")
         resourceWriter.writeMainSourcesJson(json2, outputDirectory, "file2.json")
         
-        // Then
-        val file1 = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/file1.json").toFile()
-        val file2 = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/file2.json").toFile()
+        // Then - writeMainSourcesJson now always uses fixed path, so both calls write to the same file
+        val expectedPath = File("build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json")
         
-        assertTrue(file1.exists())
-        assertTrue(file2.exists())
-        assertEquals(json1, file1.readText())
-        assertEquals(json2, file2.readText())
+        assertTrue(expectedPath.exists())
+        // The second call should overwrite the first
+        assertEquals(json2, expectedPath.readText())
     }
     
     @Test
@@ -178,11 +174,10 @@ class ResourceWriterTest {
         resourceWriter.writeMainSourcesJson(json1, outputDirectory, fileName)
         resourceWriter.writeMainSourcesJson(json2, outputDirectory, fileName)
         
-        // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
-        val file = expectedPath.toFile()
+        // Then - writeMainSourcesJson now always uses fixed path
+        val expectedPath = File("build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json")
         
-        assertTrue(file.exists())
-        assertEquals(json2, file.readText()) // Should contain the second version
+        assertTrue(expectedPath.exists())
+        assertEquals(json2, expectedPath.readText()) // Should contain the second version
     }
 }

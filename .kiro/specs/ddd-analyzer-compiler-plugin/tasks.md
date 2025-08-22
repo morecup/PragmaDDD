@@ -243,4 +243,29 @@
 
 - [ ] 20. pragma-ddd-analyzer build/generated/resources 在单独compileKotlin的时候会生成demo-ddd-analysis-main.json，但是执行build却没有生成json
 
-- [ ] 21. build/generated/resources/main/.ddd-analyzer-main-metadata.json这里有build/generated/resources/main/META-INF/ddd-analysis/demo-ddd-analysis-main.json这里也有？？
+
+
+
+- [ ] 21. pragma-ddd-analyzer模块 build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json我期望的是json生成到这个目录下的这个文件，但并没有任何文件生成
+
+
+
+- [x] 22. pragma-ddd-analyzer模块怎么自己会在build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json这个目录下生成文件，我要的是引用这个插件的比如说demo模块会生成，而不是自己去生成
+
+
+- [ ] 23. pragma-ddd-analyzer模块无法通过test
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- [x] 22.pragma-ddd-analyzer gradle test没通过

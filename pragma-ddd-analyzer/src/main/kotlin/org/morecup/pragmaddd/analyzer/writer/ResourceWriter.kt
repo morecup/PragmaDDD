@@ -23,6 +23,14 @@ interface ResourceWriter {
     )
     
     /**
+     * 将主源码 JSON 写入固定的目录路径
+     * 路径固定为: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+     * 
+     * @param json JSON 内容
+     */
+    fun writeMainSourcesJsonToFixedPath(json: String)
+    
+    /**
      * 将 JSON 文件写入指定的资源目录
      * 
      * @param json JSON 内容
@@ -68,19 +76,41 @@ class ResourceWriterImpl : ResourceWriter {
     
     companion object {
         private const val META_INF_DIR = "META-INF"
-        private const val DDD_ANALYSIS_DIR = "ddd-analysis"
+        private const val DDD_ANALYSIS_DIR = "pragma-ddd-analyzer"
+        
+        // Fixed paths that cannot be configured by users
+        private const val FIXED_OUTPUT_BASE = "build/generated/pragmaddd/main/resources"
+        private const val FIXED_FILENAME = "domain-analyzer.json"
+        private const val FIXED_COMPLETE_PATH = "$FIXED_OUTPUT_BASE/$META_INF_DIR/$DDD_ANALYSIS_DIR/$FIXED_FILENAME"
     }
     
     /**
      * 将主源码 JSON 写入 META-INF 目录
+     * Note: This method now ignores the parameters and always uses the fixed path
+     * Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
      */
     override fun writeMainSourcesJson(
         json: String,
         outputDirectory: String,
         fileName: String
     ) {
-        val resourcePath = "$DDD_ANALYSIS_DIR/$fileName"
-        writeJsonToResource(json, resourcePath, outputDirectory)
+        // Always use fixed path - parameters are ignored to prevent user configuration
+        writeMainSourcesJsonToFixedPath(json)
+    }
+    
+    /**
+     * 将主源码 JSON 写入固定的目录路径
+     * 路径固定为: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+     * 此路径不允许用户配置
+     */
+    override fun writeMainSourcesJsonToFixedPath(json: String) {
+        val fixedOutputDirectory = FIXED_OUTPUT_BASE
+        val resourcePath = "$DDD_ANALYSIS_DIR/$FIXED_FILENAME"
+        println("DDD Analyzer: writeMainSourcesJsonToFixedPath called")
+        println("DDD Analyzer: fixedOutputDirectory = $fixedOutputDirectory")
+        println("DDD Analyzer: resourcePath = $resourcePath")
+        println("DDD Analyzer: Full path will be: $fixedOutputDirectory/META-INF/$resourcePath")
+        writeJsonToResource(json, resourcePath, fixedOutputDirectory)
     }
     
     /**
@@ -91,25 +121,54 @@ class ResourceWriterImpl : ResourceWriter {
         resourcePath: String,
         outputDirectory: String
     ) {
+        println("DDD Analyzer ResourceWriter: writeJsonToResource called")
+        println("DDD Analyzer ResourceWriter: outputDirectory = $outputDirectory")
+        println("DDD Analyzer ResourceWriter: resourcePath = $resourcePath")
+        
         val metaInfDir = createMetaInfDirectory(outputDirectory)
+        println("DDD Analyzer ResourceWriter: metaInfDir = $metaInfDir")
+        
         val fullResourcePath = metaInfDir.resolve(resourcePath)
+        println("DDD Analyzer ResourceWriter: fullResourcePath = $fullResourcePath")
         
         // 确保父目录存在
-        fullResourcePath.parent?.toFile()?.mkdirs()
+        val parentDir = fullResourcePath.parent?.toFile()
+        if (parentDir != null) {
+            println("DDD Analyzer ResourceWriter: Creating parent directory: ${parentDir.absolutePath}")
+            val created = parentDir.mkdirs()
+            println("DDD Analyzer ResourceWriter: Parent directory creation result: $created")
+            println("DDD Analyzer ResourceWriter: Parent directory exists: ${parentDir.exists()}")
+        }
         
         // 写入 JSON 文件
-        fullResourcePath.toFile().writeText(json)
+        try {
+            val targetFile = fullResourcePath.toFile()
+            println("DDD Analyzer ResourceWriter: Writing to file: ${targetFile.absolutePath}")
+            targetFile.writeText(json)
+            println("DDD Analyzer ResourceWriter: File written successfully, size: ${targetFile.length()} bytes")
+        } catch (e: Exception) {
+            println("DDD Analyzer ResourceWriter: Error writing file: ${e.message}")
+            throw e
+        }
     }
     
     /**
      * 创建 META-INF 目录结构
      */
     override fun createMetaInfDirectory(outputDirectory: String): Path {
+        println("DDD Analyzer ResourceWriter: createMetaInfDirectory called with: $outputDirectory")
+        
         val outputDir = File(outputDirectory)
+        println("DDD Analyzer ResourceWriter: outputDir = ${outputDir.absolutePath}")
+        println("DDD Analyzer ResourceWriter: outputDir exists = ${outputDir.exists()}")
+        
         val metaInfDir = outputDir.resolve(META_INF_DIR)
+        println("DDD Analyzer ResourceWriter: metaInfDir = ${metaInfDir.absolutePath}")
         
         // 创建目录结构
-        metaInfDir.mkdirs()
+        val created = metaInfDir.mkdirs()
+        println("DDD Analyzer ResourceWriter: metaInfDir.mkdirs() result = $created")
+        println("DDD Analyzer ResourceWriter: metaInfDir exists after mkdirs = ${metaInfDir.exists()}")
         
         return metaInfDir.toPath()
     }

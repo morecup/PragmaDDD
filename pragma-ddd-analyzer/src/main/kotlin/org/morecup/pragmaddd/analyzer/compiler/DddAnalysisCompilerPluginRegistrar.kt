@@ -15,8 +15,10 @@ class DddAnalysisCompilerPluginRegistrar : CompilerPluginRegistrar() {
     override val supportsK2: Boolean = true
     
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-        println("DDD Analyzer: Compiler plugin registrar called")
-        System.err.println("DDD Analyzer: Compiler plugin registrar called")
+        println("DDD Analyzer: Compiler plugin registrar called - THIS SHOULD ALWAYS APPEAR!")
+        System.err.println("DDD Analyzer: Compiler plugin registrar called - THIS SHOULD ALWAYS APPEAR!")
+        System.out.flush()
+        System.err.flush()
         
         // Extract configuration values
         val outputDirectory = configuration.get(DddAnalysisCommandLineProcessor.OUTPUT_DIRECTORY_KEY)
@@ -31,6 +33,13 @@ class DddAnalysisCompilerPluginRegistrar : CompilerPluginRegistrar() {
         println("DDD Analyzer: Analysis features - method: $enableMethodAnalysis, property: $enablePropertyAnalysis, documentation: $enableDocumentationExtraction")
         println("DDD Analyzer: Performance settings - maxClasses: $maxClassesPerCompilation, failOnErrors: $failOnAnalysisErrors")
         
+        // Validate that we have an output directory
+        if (outputDirectory == null) {
+            println("DDD Analyzer: ERROR - No output directory configured! IR extension will not be registered.")
+            System.err.println("DDD Analyzer: ERROR - No output directory configured! IR extension will not be registered.")
+            return
+        }
+        
         // Create and register the IR generation extension
         val irExtension = DddAnalysisIrGenerationExtension(
             outputDirectory = outputDirectory,
@@ -42,7 +51,7 @@ class DddAnalysisCompilerPluginRegistrar : CompilerPluginRegistrar() {
             failOnAnalysisErrors = failOnAnalysisErrors
         )
         
-        println("DDD Analyzer: Registering IR generation extension")
+        println("DDD Analyzer: Registering IR generation extension with outputDirectory: $outputDirectory")
         IrGenerationExtension.registerExtension(irExtension)
         println("DDD Analyzer: IR generation extension registered successfully")
     }

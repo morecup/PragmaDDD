@@ -20,6 +20,12 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
     companion object {
         const val PLUGIN_ID = "org.morecup.pragmaddd.analyzer"
         const val EXTENSION_NAME = "pragmaDddAnalyzer"
+        
+        // Fixed paths that cannot be configured by users
+        const val FIXED_OUTPUT_DIRECTORY = "build/generated/pragmaddd/main/resources"
+        const val FIXED_JSON_FILENAME = "domain-analyzer"
+        const val FIXED_META_INF_PATH = "META-INF/pragma-ddd-analyzer"
+        const val FIXED_COMPLETE_JSON_PATH = "$FIXED_OUTPUT_DIRECTORY/$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json"
     }
     
     override fun apply(target: Project) {
@@ -29,9 +35,11 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             PragmaDddAnalyzerExtension::class.java
         )
         
-        // Set default values - use generated resources directory for JAR packaging
-        extension.outputDirectory.convention("build/generated/resources")
-        extension.jsonFileNaming.convention("ddd-analysis")
+        // Set fixed values - these are NOT configurable by users
+        // Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+        // These values are hardcoded and cannot be changed by users
+        extension.outputDirectory.set(FIXED_OUTPUT_DIRECTORY)
+        extension.jsonFileNaming.set(FIXED_JSON_FILENAME)
         extension.enableMethodAnalysis.convention(true)
         extension.enablePropertyAnalysis.convention(true)
         extension.enableDocumentationExtraction.convention(true)
@@ -74,22 +82,26 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
     private fun configureTaskDependencies(project: Project, extension: PragmaDddAnalyzerExtension) {
         // Find all Kotlin compilation tasks
         project.tasks.withType(KotlinCompile::class.java) { compileTask ->
-            // Ensure output directory exists before compilation
+            // Ensure FIXED output directory exists before compilation
+            // Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
             compileTask.doFirst {
-                val outputDir = extension.getResolvedOutputDirectory(project.projectDir)
-                if (!outputDir.exists()) {
-                    outputDir.mkdirs()
-                    project.logger.info("DDD Analyzer: Created output directory: ${outputDir.absolutePath}")
+                val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
+                if (!metaInfDir.exists()) {
+                    metaInfDir.mkdirs()
+                    project.logger.info("DDD Analyzer: Created FIXED output directory: ${metaInfDir.absolutePath}")
                 }
             }
             
             // Log completion of analysis after compilation
             compileTask.doLast {
-                val outputDir = extension.getResolvedOutputDirectory(project.projectDir)
-                val mainJsonFile = File(outputDir, extension.getMainSourceJsonFileName())
+                val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
                 
-                if (mainJsonFile.exists()) {
-                    project.logger.info("DDD Analyzer: Generated main source analysis: ${mainJsonFile.absolutePath}")
+                if (fixedJsonFile.exists()) {
+                    project.logger.info("DDD Analyzer: Generated main source analysis at FIXED path: ${fixedJsonFile.absolutePath}")
+                } else {
+                    project.logger.warn("DDD Analyzer: Expected JSON file not found at FIXED path: ${fixedJsonFile.absolutePath}")
                 }
             }
         }
@@ -107,20 +119,23 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
      */
     private fun configureIncrementalCompilation(project: Project) {
         project.tasks.withType(KotlinCompile::class.java) { compileTask ->
-            // Add output directory as task output for incremental compilation
-            val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-            val outputDir = extension.getResolvedOutputDirectory(project.projectDir)
-            compileTask.outputs.dir(outputDir)
+            // Add FIXED output directory as task output for incremental compilation
+            val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+            val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
+            
+            // Register the META-INF directory as output for incremental compilation
+            compileTask.outputs.dir(metaInfDir)
             
             // Mark as incremental compilation compatible
             compileTask.outputs.upToDateWhen {
-                // Check if any source files have changed compared to output files
-                val outputFiles = outputDir.listFiles()?.filter { it.name.endsWith(".json") } ?: emptyList()
-                if (outputFiles.isEmpty()) {
-                    false // No output files exist, need to run
+                // Check if the FIXED JSON file exists and is recent
+                val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
+                if (!fixedJsonFile.exists()) {
+                    false // No output file exists, need to run
                 } else {
-                    val outputLastModified = outputFiles.maxOfOrNull { it.lastModified() } ?: 0L
-                    // Simple check - if output directory is newer than a reasonable time, consider up-to-date
+                    val outputLastModified = fixedJsonFile.lastModified()
+                    // Simple check - if output file is newer than a reasonable time, consider up-to-date
                     outputLastModified > (System.currentTimeMillis() - 60000) // 1 minute threshold
                 }
             }
@@ -131,12 +146,15 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
      * Configures resource generation for JAR packaging
      */
     private fun configureResourceGeneration(project: Project, extension: PragmaDddAnalyzerExtension) {
-        // Ensure generated JSON files are included in JAR resources
+        // Ensure generated JSON files are included in JAR resources from FIXED path
         project.tasks.findByName("jar")?.let { jarTask ->
             jarTask.doFirst {
-                val outputDir = extension.getResolvedOutputDirectory(project.projectDir)
-                if (outputDir.exists()) {
-                    project.logger.info("DDD Analyzer: Including JSON files from ${outputDir.absolutePath} in JAR")
+                val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
+                if (fixedJsonFile.exists()) {
+                    project.logger.info("DDD Analyzer: Including JSON file from FIXED path ${fixedJsonFile.absolutePath} in JAR")
+                } else {
+                    project.logger.warn("DDD Analyzer: Expected JSON file not found at FIXED path ${fixedJsonFile.absolutePath}")
                 }
             }
         }
@@ -149,8 +167,15 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
     override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
         // Only apply to main compilations, skip test compilations
         val isTestCompilation = kotlinCompilation.name.contains("test", ignoreCase = true)
-        println("DDD Analyzer: isApplicable() called for compilation: ${kotlinCompilation.name}, isTest: $isTestCompilation")
-        return !isTestCompilation
+        
+        // Skip applying the plugin to its own module to prevent self-analysis
+        val projectName = kotlinCompilation.target.project.name
+        val isOwnModule = projectName == "pragma-ddd-analyzer"
+        
+        println("DDD Analyzer: isApplicable() called for compilation: ${kotlinCompilation.name}, project: $projectName, isTest: $isTestCompilation, isOwnModule: $isOwnModule")
+        
+        // Don't apply to test compilations or to the plugin's own module
+        return !isTestCompilation && !isOwnModule
     }
     
     override fun getCompilerPluginId(): String {
@@ -174,16 +199,9 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
         return project.provider {
             val options = mutableListOf<SubpluginOption>()
             
-            // Use consistent output directory for main compilations only
-            val baseOutputDir = extension.outputDirectory.get()
-            
-            val resolvedOutputDir = if (baseOutputDir.startsWith("/") || (baseOutputDir.length > 1 && baseOutputDir[1] == ':')) {
-                // Absolute path - use main resources directory for JAR packaging
-                "$baseOutputDir${File.separator}main"
-            } else {
-                // Relative path - resolve relative to project directory, always use main resources
-                project.layout.projectDirectory.dir("$baseOutputDir/main").asFile.absolutePath
-            }
+            // Use fixed output directory - NOT configurable by users
+            // Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+            val resolvedOutputDir = project.layout.projectDirectory.dir(FIXED_OUTPUT_DIRECTORY).asFile.absolutePath
             options.add(SubpluginOption(key = "outputDirectory", value = resolvedOutputDir))
             
 
@@ -200,8 +218,12 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             options.add(SubpluginOption(key = "maxClassesPerCompilation", value = extension.maxClassesPerCompilation.get().toString()))
             options.add(SubpluginOption(key = "failOnAnalysisErrors", value = extension.failOnAnalysisErrors.get().toString()))
             
-            project.logger.info("DDD Analyzer: Configuring compiler plugin for main compilation '${kotlinCompilation.name}' with output directory: $resolvedOutputDir")
+            project.logger.info("DDD Analyzer: Configuring compiler plugin for main compilation '${kotlinCompilation.name}' with fixed output directory: $resolvedOutputDir")
             project.logger.debug("DDD Analyzer: Configuration options: ${options.map { "${it.key}=${it.value}" }.joinToString(", ")}")
+            
+            // Add debug information about the plugin artifact
+            val pluginArtifact = getPluginArtifact()
+            project.logger.info("DDD Analyzer: Plugin artifact - groupId: ${pluginArtifact.groupId}, artifactId: ${pluginArtifact.artifactId}, version: ${pluginArtifact.version}")
             
             options
         }

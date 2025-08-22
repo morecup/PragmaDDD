@@ -15,8 +15,7 @@ dependencies {
 
 // 配置 DDD 分析器
 pragmaDddAnalyzer {
-    // Use default output directory (build/resources/main)
-    jsonFileNaming.set("demo-ddd-analysis")
-
+    // Note: Output directory and JSON file naming are now fixed and not configurable
+    // Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
 }
 

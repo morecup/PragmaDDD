@@ -32,9 +32,9 @@ class BuildLifecycleIntegrationTest {
         val extension = project.extensions.findByType(PragmaDddAnalyzerExtension::class.java)
         assertNotNull(extension)
         
-        // Verify default configuration
-        assertEquals("build/generated/resources", extension!!.outputDirectory.get())
-        assertEquals("ddd-analysis", extension.jsonFileNaming.get())
+        // Verify fixed configuration (not configurable by users)
+        assertEquals("build/generated/pragmaddd/main/resources", extension!!.outputDirectory.get())
+        assertEquals("domain-analyzer", extension.jsonFileNaming.get())
     }
     
     @Test
@@ -42,13 +42,13 @@ class BuildLifecycleIntegrationTest {
         // Given
         plugin.apply(project)
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        extension.outputDirectory.set("build/test-output")
+        // Note: outputDirectory is now fixed and cannot be set by users
         
         // When - simulate afterEvaluate
         project.afterEvaluate { }
         
-        // Then - extension should be configured
-        assertEquals("build/test-output", extension.outputDirectory.get())
+        // Then - extension should be configured with fixed values
+        assertEquals("build/generated/pragmaddd/main/resources", extension.outputDirectory.get())
     }
     
     @Test
@@ -71,8 +71,7 @@ class BuildLifecycleIntegrationTest {
         // Given
         plugin.apply(project)
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        extension.outputDirectory.set("build/custom-output")
-        extension.jsonFileNaming.set("custom-analysis")
+        // Output directory and JSON naming are now fixed and cannot be configured
         extension.enableMethodAnalysis.set(false)
         
         val compilation = createMockCompilation("main")
@@ -85,8 +84,10 @@ class BuildLifecycleIntegrationTest {
         assertTrue(options.isNotEmpty())
         
         val optionsMap = options.associate { it.key to it.value }
-        assertTrue(optionsMap["outputDirectory"]!!.endsWith("build${File.separator}custom-output${File.separator}main"))
-        assertEquals("custom-analysis", optionsMap["jsonFileNaming"])
+        // Output directory is now fixed
+        assertTrue(optionsMap["outputDirectory"]!!.contains("build${File.separator}generated${File.separator}pragmaddd${File.separator}main${File.separator}resources"))
+        // JSON file naming is now fixed
+        assertEquals("domain-analyzer", optionsMap["jsonFileNaming"])
         assertEquals("false", optionsMap["enableMethodAnalysis"])
     }
     
@@ -96,8 +97,7 @@ class BuildLifecycleIntegrationTest {
         plugin.apply(project)
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
         
-        // Configure with various settings
-        extension.outputDirectory.set("/absolute/path")
+        // Configure with various settings (only configurable properties)
         extension.enablePropertyAnalysis.set(true)
         extension.enableDocumentationExtraction.set(false)
         extension.maxClassesPerCompilation.set(500)
@@ -111,7 +111,8 @@ class BuildLifecycleIntegrationTest {
         
         // Then
         val optionsMap = options.associate { it.key to it.value }
-        assertEquals("/absolute/path${File.separator}main", optionsMap["outputDirectory"])
+        // Output directory is now fixed
+        assertTrue(optionsMap["outputDirectory"]!!.contains("build${File.separator}generated${File.separator}pragmaddd${File.separator}main${File.separator}resources"))
         assertEquals("true", optionsMap["enablePropertyAnalysis"])
         assertEquals("false", optionsMap["enableDocumentationExtraction"])
         assertEquals("500", optionsMap["maxClassesPerCompilation"])
@@ -135,7 +136,8 @@ class BuildLifecycleIntegrationTest {
         // Given
         plugin.apply(project)
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        extension.outputDirectory.set("")
+        // Configure invalid values for configurable properties only
+        extension.maxClassesPerCompilation.set(-1)
         
         // When & Then - should throw with invalid configuration
         assertThrows(IllegalArgumentException::class.java) {
@@ -155,8 +157,7 @@ class BuildLifecycleIntegrationTest {
         // Then
         assertNotNull(summary)
         assertTrue(summary.contains("Pragma DDD Analyzer Configuration"))
-        assertTrue(summary.contains("Output Directory"))
-        assertTrue(summary.contains("JSON File Naming"))
+        assertTrue(summary.contains("Output Path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json (FIXED - NOT CONFIGURABLE)"))
     }
     
     private fun createMockCompilation(name: String): KotlinCompilation<*> {

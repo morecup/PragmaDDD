@@ -41,6 +41,14 @@ class DddAnalysisIrGenerationExtension(
     private val failOnAnalysisErrors: Boolean = false
 ) : IrGenerationExtension {
     
+    companion object {
+        // Fixed paths that cannot be configured by users
+        private const val FIXED_OUTPUT_DIRECTORY = "build/generated/pragmaddd/main/resources"
+        private const val FIXED_JSON_FILENAME = "domain-analyzer.json"
+        private const val FIXED_META_INF_PATH = "META-INF/pragma-ddd-analyzer"
+        private const val FIXED_COMPLETE_PATH = "$FIXED_OUTPUT_DIRECTORY/$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME"
+    }
+    
     private val errorReporter: ErrorReporter = DefaultErrorReporter(
         failOnError = false,
         logPrefix = "DDD Analyzer"
@@ -116,6 +124,11 @@ class DddAnalysisIrGenerationExtension(
         val startTime = System.currentTimeMillis()
         val sourceType = "main"
         println("DDD Analyzer: IR Generation Extension invoked for module: ${moduleFragment.name} (source type: $sourceType)")
+        
+        // Debug: Print current working directory and output directory
+        val currentDir = System.getProperty("user.dir")
+        println("DDD Analyzer: Current working directory: $currentDir")
+        println("DDD Analyzer: Configured output directory: $outputDirectory")
         
         // Only proceed if we have an output directory configured
         if (outputDirectory == null) {
@@ -270,42 +283,84 @@ class DddAnalysisIrGenerationExtension(
     }
     
     /**
-     * Generates JSON files and writes them to META-INF directory for JAR packaging
+     * Generates JSON files and writes them to fixed META-INF directory for JAR packaging
+     * Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+     * This path is hardcoded and cannot be configured by users
      */
     private fun generateAndWriteJsonFiles() {
-        val outputDir = outputDirectory ?: return
+        // Use the output directory passed from Gradle plugin (should be absolute path)
+        val actualOutputDir = outputDirectory ?: FIXED_OUTPUT_DIRECTORY
+        
+        println("DDD Analyzer: Using output directory: $actualOutputDir")
+        println("DDD Analyzer: Current working directory: ${System.getProperty("user.dir")}")
+        
+        // The output directory from Gradle should already be absolute, but let's ensure it
+        val resolvedOutputDir = java.io.File(actualOutputDir).let { file ->
+            if (file.isAbsolute) {
+                file.absolutePath
+            } else {
+                // If it's relative, resolve it against the current working directory
+                java.io.File(System.getProperty("user.dir"), actualOutputDir).absolutePath
+            }
+        }
+        
+        println("DDD Analyzer: Resolved output directory: $resolvedOutputDir")
+        
+        // Verify the directory exists and create it if necessary
+        val outputDirFile = java.io.File(resolvedOutputDir)
+        if (!outputDirFile.exists()) {
+            println("DDD Analyzer: Output directory does not exist, creating: $resolvedOutputDir")
+            val created = outputDirFile.mkdirs()
+            println("DDD Analyzer: Directory creation result: $created")
+        }
         
         // Ensure output directory is writable
-        if (!resourceWriter.isOutputDirectoryWritable(outputDir)) {
-            println("DDD Analyzer: Output directory is not writable: $outputDir")
+        if (!resourceWriter.isOutputDirectoryWritable(resolvedOutputDir)) {
+            println("DDD Analyzer: Output directory is not writable: $resolvedOutputDir")
+            println("DDD Analyzer: Directory exists: ${outputDirFile.exists()}")
+            println("DDD Analyzer: Directory is directory: ${outputDirFile.isDirectory}")
+            println("DDD Analyzer: Directory can write: ${outputDirFile.canWrite()}")
             return
         }
         
         // Generate and write main sources JSON if we have main source metadata
         val mainSourcesMetadata = metadataCollector.getMainSourcesMetadata()
         if (mainSourcesMetadata.isNotEmpty()) {
+            println("DDD Analyzer: Generating JSON for ${mainSourcesMetadata.size} classes")
             val mainJson = jsonGenerator.generateMainSourcesJson(mainSourcesMetadata)
-            val mainFileName = "$jsonFileNaming-main.json"
-            resourceWriter.writeMainSourcesJson(mainJson, outputDir, mainFileName)
-            println("DDD Analyzer: Generated main sources JSON with ${mainSourcesMetadata.size} classes")
             
-            // Verify the file was written successfully
-            if (resourceWriter.verifyJsonFileWritten(outputDir, "ddd-analysis/$mainFileName")) {
-                println("DDD Analyzer: Main sources JSON file successfully written to META-INF")
-            } else {
-                println("DDD Analyzer: Warning - Main sources JSON file verification failed")
+            // Write to the resolved output directory
+            try {
+                resourceWriter.writeJsonToResource(mainJson, "pragma-ddd-analyzer/domain-analyzer.json", resolvedOutputDir)
+                println("DDD Analyzer: Successfully wrote JSON to: $resolvedOutputDir/META-INF/pragma-ddd-analyzer/domain-analyzer.json")
+                
+                // Verify the file was written successfully
+                if (resourceWriter.verifyJsonFileWritten(resolvedOutputDir, "pragma-ddd-analyzer/domain-analyzer.json")) {
+                    println("DDD Analyzer: JSON file verification successful")
+                } else {
+                    println("DDD Analyzer: Warning - JSON file verification failed")
+                }
+            } catch (e: Exception) {
+                println("DDD Analyzer: Error writing JSON file: ${e.message}")
+                e.printStackTrace()
             }
+        } else {
+            println("DDD Analyzer: No main source metadata to generate JSON for")
         }
         
         // List all generated JSON files for confirmation
-        val jsonFiles = resourceWriter.listJsonFiles(outputDir)
-        if (jsonFiles.isNotEmpty()) {
-            println("DDD Analyzer: Generated JSON files in META-INF/ddd-analysis/ for main compilation:")
-            jsonFiles.forEach { file ->
-                println("  - ${file.name} (${file.length()} bytes)")
+        try {
+            val jsonFiles = resourceWriter.listJsonFiles(resolvedOutputDir)
+            if (jsonFiles.isNotEmpty()) {
+                println("DDD Analyzer: Generated JSON files in META-INF/pragma-ddd-analyzer/ directory:")
+                jsonFiles.forEach { file ->
+                    println("  - ${file.name} (${file.length()} bytes) at ${file.absolutePath}")
+                }
+            } else {
+                println("DDD Analyzer: No JSON files found in output directory")
             }
-        } else {
-            println("DDD Analyzer: No JSON files generated for main compilation")
+        } catch (e: Exception) {
+            println("DDD Analyzer: Error listing JSON files: ${e.message}")
         }
     }
     

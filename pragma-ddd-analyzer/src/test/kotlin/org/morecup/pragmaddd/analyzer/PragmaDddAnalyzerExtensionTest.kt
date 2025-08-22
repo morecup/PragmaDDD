@@ -17,128 +17,21 @@ class PragmaDddAnalyzerExtensionTest {
     
     @Test
     fun `validate should pass with valid configuration`() {
-        // Given
-        val extension = createMockExtension(
-            outputDirectory = "build/resources",
-            jsonFileNaming = "ddd-analysis"
-        )
+        // Given - output directory and JSON file naming are now fixed, only test configurable properties
+        val extension = createMockExtension()
         
         // When & Then - should not throw
         extension.validate()
     }
     
-    @Test
-    fun `validate should throw exception when output directory is null`() {
-        // Given
-        val extension = createMockExtension(
-            outputDirectory = null,
-            jsonFileNaming = "ddd-analysis"
-        )
-        
-        // When & Then
-        val exception = assertThrows<IllegalArgumentException> {
-            extension.validate()
-        }
-        assertEquals("Output directory cannot be null or blank", exception.message)
-    }
-    
-    @Test
-    fun `validate should throw exception when output directory is blank`() {
-        // Given
-        val extension = createMockExtension(
-            outputDirectory = "   ",
-            jsonFileNaming = "ddd-analysis"
-        )
-        
-        // When & Then
-        val exception = assertThrows<IllegalArgumentException> {
-            extension.validate()
-        }
-        assertEquals("Output directory cannot be null or blank", exception.message)
-    }
-    
-    @Test
-    fun `validate should throw exception when json file naming is null`() {
-        // Given
-        val extension = createMockExtension(
-            outputDirectory = "build/resources",
-            jsonFileNaming = null
-        )
-        
-        // When & Then
-        val exception = assertThrows<IllegalArgumentException> {
-            extension.validate()
-        }
-        assertEquals("JSON file naming cannot be null or blank", exception.message)
-    }
-    
-    @Test
-    fun `validate should throw exception when json file naming is blank`() {
-        // Given
-        val extension = createMockExtension(
-            outputDirectory = "build/resources",
-            jsonFileNaming = ""
-        )
-        
-        // When & Then
-        val exception = assertThrows<IllegalArgumentException> {
-            extension.validate()
-        }
-        assertEquals("JSON file naming cannot be null or blank", exception.message)
-    }
-    
-    @Test
-    fun `validate should throw exception when json file naming contains invalid characters`() {
-        val invalidChars = listOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
-        
-        invalidChars.forEach { invalidChar ->
-            // Given
-            val extension = createMockExtension(
-                outputDirectory = "build/resources",
-                jsonFileNaming = "ddd${invalidChar}analysis"
-            )
-            
-            // When & Then
-            val exception = assertThrows<IllegalArgumentException> {
-                extension.validate()
-            }
-            assertTrue(
-                exception.message!!.contains("JSON file naming contains invalid characters"),
-                "Expected error message for invalid character '$invalidChar', but got: ${exception.message}"
-            )
-        }
-    }
-    
-    @Test
-    fun `validate should pass with valid json file naming characters`() {
-        val validNames = listOf(
-            "ddd-analysis",
-            "ddd_analysis",
-            "dddAnalysis",
-            "DDD.Analysis",
-            "ddd123analysis",
-            "analysis-v1.0"
-        )
-        
-        validNames.forEach { validName ->
-            // Given
-            val extension = createMockExtension(
-                outputDirectory = "build/resources",
-                jsonFileNaming = validName
-            )
-            
-            // When & Then - should not throw
-            extension.validate()
-        }
-    }
+    // Note: Tests for output directory and JSON file naming validation removed
+    // because these properties are now fixed and not configurable by users
     
     @Test
     fun `validate should throw exception when maxClassesPerCompilation is zero or negative`() {
         listOf(0, -1, -100).forEach { invalidValue ->
             // Given
             val extension = createMockExtension(
-                outputDirectory = "build/resources",
-                jsonFileNaming = "ddd-analysis",
                 maxClassesPerCompilation = invalidValue
             )
             
@@ -157,8 +50,6 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should throw exception when maxClassesPerCompilation is too high`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources",
-            jsonFileNaming = "ddd-analysis",
             maxClassesPerCompilation = 15000
         )
         
@@ -173,8 +64,6 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should throw exception when property analysis is enabled but method analysis is disabled`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources",
-            jsonFileNaming = "ddd-analysis",
             enableMethodAnalysis = false,
             enablePropertyAnalysis = true
         )
@@ -190,8 +79,6 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should pass when both method and property analysis are disabled`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources",
-            jsonFileNaming = "ddd-analysis",
             enableMethodAnalysis = false,
             enablePropertyAnalysis = false
         )
@@ -200,93 +87,19 @@ class PragmaDddAnalyzerExtensionTest {
         extension.validate()
     }
     
-    @Test
-    fun `validate should throw exception for reserved file names`() {
-        val reservedNames = listOf("CON", "PRN", "AUX", "NUL", "COM1", "LPT1")
-        
-        reservedNames.forEach { reservedName ->
-            // Given
-            val extension = createMockExtension(
-                outputDirectory = "build/resources",
-                jsonFileNaming = reservedName
-            )
-            
-            // When & Then
-            val exception = assertThrows<IllegalArgumentException> {
-                extension.validate()
-            }
-            assertTrue(
-                exception.message!!.contains("JSON file naming cannot use reserved system names"),
-                "Expected error for reserved name '$reservedName', but got: ${exception.message}"
-            )
-        }
-    }
+    // Note: Tests for output directory and JSON file naming validation removed
+    // because these properties are now fixed and not configurable by users
     
     @Test
-    fun `validate should throw exception for too long json file naming`() {
+    fun `getMainSourceJsonFileName should return fixed file name`() {
         // Given
-        val longName = "a".repeat(101)
-        val extension = createMockExtension(
-            outputDirectory = "build/resources",
-            jsonFileNaming = longName
-        )
-        
-        // When & Then
-        val exception = assertThrows<IllegalArgumentException> {
-            extension.validate()
-        }
-        assertTrue(exception.message!!.contains("JSON file naming is too long"))
-    }
-    
-    @Test
-    fun `validate should throw exception for output directory with invalid path characters`() {
-        val invalidChars = listOf('*', '?', '"', '<', '>', '|')
-        
-        invalidChars.forEach { invalidChar ->
-            // Given
-            val extension = createMockExtension(
-                outputDirectory = "build/output${invalidChar}dir",
-                jsonFileNaming = "ddd-analysis"
-            )
-            
-            // When & Then
-            val exception = assertThrows<IllegalArgumentException> {
-                extension.validate()
-            }
-            assertTrue(
-                exception.message!!.contains("Output directory contains invalid path characters"),
-                "Expected error for invalid character '$invalidChar', but got: ${exception.message}"
-            )
-        }
-    }
-    
-    @Test
-    fun `validate should throw exception for output directory with leading or trailing whitespace`() {
-        listOf("  build/generated/resources", "build/generated/resources  ", "  build/generated/resources  ").forEach { invalidPath ->
-            // Given
-            val extension = createMockExtension(
-                outputDirectory = invalidPath,
-                jsonFileNaming = "ddd-analysis"
-            )
-            
-            // When & Then
-            val exception = assertThrows<IllegalArgumentException> {
-                extension.validate()
-            }
-            assertTrue(exception.message!!.contains("Output directory cannot have leading or trailing whitespace"))
-        }
-    }
-    
-    @Test
-    fun `getMainSourceJsonFileName should return correct file name`() {
-        // Given
-        val extension = createMockExtension(jsonFileNaming = "custom-analysis")
+        val extension = createMockExtension()
         
         // When
         val fileName = extension.getMainSourceJsonFileName()
         
         // Then
-        assertEquals("custom-analysis-main.json", fileName)
+        assertEquals("domain-analyzer.json", fileName)
     }
     
     // Test removed - getTestSourceJsonFileName method no longer exists
@@ -332,11 +145,9 @@ class PragmaDddAnalyzerExtensionTest {
     }
     
     @Test
-    fun `getConfigurationSummary should return formatted summary`() {
+    fun `getConfigurationSummary should return formatted summary with fixed paths`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/generated/resources",
-            jsonFileNaming = "custom-analysis",
             enableMethodAnalysis = false,
             enablePropertyAnalysis = true,
             enableDocumentationExtraction = false,
@@ -350,8 +161,7 @@ class PragmaDddAnalyzerExtensionTest {
         // Then
         assertNotNull(summary)
         assertTrue(summary.contains("Pragma DDD Analyzer Configuration:"))
-        assertTrue(summary.contains("Output Directory: build/generated/resources"))
-        assertTrue(summary.contains("JSON File Naming: custom-analysis"))
+        assertTrue(summary.contains("Output Path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json (FIXED - NOT CONFIGURABLE)"))
         assertTrue(summary.contains("Enable Method Analysis: false"))
         assertTrue(summary.contains("Enable Property Analysis: true"))
         assertTrue(summary.contains("Enable Documentation Extraction: false"))
@@ -360,11 +170,9 @@ class PragmaDddAnalyzerExtensionTest {
     }
     
     @Test
-    fun `getConfigurationSummary should handle null values gracefully`() {
+    fun `getConfigurationSummary should handle null values gracefully for configurable properties`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = null,
-            jsonFileNaming = null,
             enableMethodAnalysis = null,
             enablePropertyAnalysis = null,
             enableDocumentationExtraction = null,
@@ -377,8 +185,7 @@ class PragmaDddAnalyzerExtensionTest {
         
         // Then
         assertNotNull(summary)
-        assertTrue(summary.contains("Output Directory: null"))
-        assertTrue(summary.contains("JSON File Naming: null"))
+        assertTrue(summary.contains("Output Path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json (FIXED - NOT CONFIGURABLE)"))
         assertTrue(summary.contains("Enable Method Analysis: null"))
         assertTrue(summary.contains("Enable Property Analysis: null"))
         assertTrue(summary.contains("Enable Documentation Extraction: null"))
@@ -388,10 +195,9 @@ class PragmaDddAnalyzerExtensionTest {
     
     /**
      * Creates a mock extension with the specified configuration values
+     * Note: outputDirectory and jsonFileNaming are now fixed and not configurable
      */
     private fun createMockExtension(
-        outputDirectory: String? = "build/generated/resources",
-        jsonFileNaming: String? = "ddd-analysis",
         enableMethodAnalysis: Boolean? = true,
         enablePropertyAnalysis: Boolean? = true,
         enableDocumentationExtraction: Boolean? = true,
@@ -408,9 +214,9 @@ class PragmaDddAnalyzerExtensionTest {
             override val failOnAnalysisErrors: Property<Boolean> = mock()
         }
         
-        // Configure mock properties
-        whenever(extension.outputDirectory.orNull).thenReturn(outputDirectory)
-        whenever(extension.jsonFileNaming.orNull).thenReturn(jsonFileNaming)
+        // Configure mock properties - fixed values for output directory and JSON naming
+        whenever(extension.outputDirectory.orNull).thenReturn("build/generated/pragmaddd/main/resources")
+        whenever(extension.jsonFileNaming.orNull).thenReturn("domain-analyzer")
         whenever(extension.enableMethodAnalysis.orNull).thenReturn(enableMethodAnalysis)
         whenever(extension.enablePropertyAnalysis.orNull).thenReturn(enablePropertyAnalysis)
         whenever(extension.enableDocumentationExtraction.orNull).thenReturn(enableDocumentationExtraction)
@@ -418,7 +224,7 @@ class PragmaDddAnalyzerExtensionTest {
         whenever(extension.failOnAnalysisErrors.orNull).thenReturn(failOnAnalysisErrors)
         
         // Mock the get() methods for the new utility methods
-        whenever(extension.jsonFileNaming.get()).thenReturn(jsonFileNaming ?: "ddd-analysis")
+        whenever(extension.jsonFileNaming.get()).thenReturn("domain-analyzer")
         whenever(extension.enableMethodAnalysis.get()).thenReturn(enableMethodAnalysis ?: true)
         whenever(extension.enablePropertyAnalysis.get()).thenReturn(enablePropertyAnalysis ?: true)
         whenever(extension.enableDocumentationExtraction.get()).thenReturn(enableDocumentationExtraction ?: true)

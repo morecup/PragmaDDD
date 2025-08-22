@@ -1,91 +1,151 @@
 package org.morecup.pragmaddd.analyzer.standalone
 
-import org.morecup.pragmaddd.analyzer.*
+import org.morecup.pragmaddd.analyzer.generator.JsonGeneratorImpl
+import org.morecup.pragmaddd.analyzer.model.*
 import java.io.File
 
 /**
- * 独立的分析器工具，可以直接运行而不依赖 Gradle 插件
+ * 独立分析器 - 用于演示和测试 JSON 生成功能
  */
-object StandaloneAnalyzer {
+class StandaloneAnalyzer {
     
-    @JvmStatic
-    fun main(args: Array<String>) {
-        if (args.isEmpty()) {
-            printUsage()
-            return
-        }
-        
-        val analyzer = AggregateRootAnalyzer()
-        val results = mutableListOf<ClassAnalysisResult>()
-        
-        args.forEach { path ->
-            val file = File(path)
-            when {
-                file.isFile && file.extension == "class" -> {
-                    analyzer.analyzeClass(file)?.let { results.add(it) }
-                }
-                file.isFile && file.extension == "jar" -> {
-                    results.addAll(analyzer.analyzeJar(file))
-                }
-                file.isDirectory -> {
-                    results.addAll(analyzer.analyzeDirectory(file))
-                }
-                else -> {
-                    println("跳过无效路径: $path")
-                }
-            }
-        }
-        
-        // 输出结果
-        printResults(results)
+    private val jsonGenerator = JsonGeneratorImpl()
+    
+    /**
+     * 分析示例类并生成 JSON
+     */
+    fun analyzeExampleClasses(): String {
+        val exampleClasses = createExampleMetadata()
+        return jsonGenerator.generateMainSourcesJson(exampleClasses)
     }
     
-    private fun printUsage() {
-        println("""
-            Pragma DDD 分析器
-            
-            用法: java -jar pragma-ddd-analyzer.jar <路径1> [路径2] ...
-            
-            支持的路径类型:
-            - .class 文件
-            - .jar 文件  
-            - 包含 .class 文件的目录
-            
-            示例:
-            java -jar pragma-ddd-analyzer.jar build/classes/kotlin/main
-            java -jar pragma-ddd-analyzer.jar MyClass.class
-            java -jar pragma-ddd-analyzer.jar myapp.jar
-        """.trimIndent())
+    /**
+     * 创建示例元数据
+     */
+    private fun createExampleMetadata(): List<ClassMetadata> {
+        return listOf(
+            ClassMetadata(
+                className = "User",
+                packageName = "com.example.demo.domain",
+                annotationType = DddAnnotationType.AGGREGATE_ROOT,
+                properties = listOf(
+                    PropertyMetadata(
+                        name = "id",
+                        type = "String",
+                        isPrivate = true,
+                        isMutable = false,
+                        documentation = DocumentationMetadata(
+                            summary = "User unique identifier",
+                            description = null,
+                            parameters = emptyMap(),
+                            returnDescription = null
+                        ),
+                        annotations = emptyList()
+                    ),
+                    PropertyMetadata(
+                        name = "name",
+                        type = "String",
+                        isPrivate = true,
+                        isMutable = true,
+                        documentation = null,
+                        annotations = emptyList()
+                    ),
+                    PropertyMetadata(
+                        name = "email",
+                        type = "String",
+                        isPrivate = true,
+                        isMutable = true,
+                        documentation = null,
+                        annotations = emptyList()
+                    )
+                ),
+                methods = listOf(
+                    MethodMetadata(
+                        name = "updateProfile",
+                        parameters = listOf(
+                            ParameterMetadata(
+                                name = "newName",
+                                type = "String",
+                                annotations = emptyList()
+                            ),
+                            ParameterMetadata(
+                                name = "newEmail",
+                                type = "String",
+                                annotations = emptyList()
+                            )
+                        ),
+                        returnType = "Unit",
+                        isPrivate = false,
+                        methodCalls = listOf(
+                            MethodCallMetadata(
+                                targetMethod = "isNotBlank",
+                                receiverType = "String",
+                                parameters = emptyList()
+                            )
+                        ),
+                        propertyAccesses = listOf(
+                            PropertyAccessMetadata(
+                                propertyName = "name",
+                                accessType = PropertyAccessType.READ,
+                                ownerClass = "com.example.demo.domain.User"
+                            ),
+                            PropertyAccessMetadata(
+                                propertyName = "name",
+                                accessType = PropertyAccessType.WRITE,
+                                ownerClass = "com.example.demo.domain.User"
+                            ),
+                            PropertyAccessMetadata(
+                                propertyName = "email",
+                                accessType = PropertyAccessType.WRITE,
+                                ownerClass = "com.example.demo.domain.User"
+                            )
+                        ),
+                        documentation = DocumentationMetadata(
+                            summary = "Update user profile information",
+                            description = "Accesses and modifies multiple properties",
+                            parameters = mapOf(
+                                "newName" to "New user name",
+                                "newEmail" to "New email address"
+                            ),
+                            returnDescription = null
+                        ),
+                        annotations = emptyList()
+                    )
+                ),
+                documentation = DocumentationMetadata(
+                    summary = "User aggregate root example",
+                    description = null,
+                    parameters = emptyMap(),
+                    returnDescription = null
+                ),
+                annotations = listOf(
+                    AnnotationMetadata(
+                        name = "AggregateRoot",
+                        parameters = emptyMap()
+                    )
+                )
+            )
+        )
     }
     
-    private fun printResults(results: List<ClassAnalysisResult>) {
-        if (results.isEmpty()) {
-            println("未找到被 @AggregateRoot 注解的类")
-            return
-        }
-        
-        println("分析结果:")
-        println("=".repeat(50))
-        
-        results.forEach { result ->
-            println("\n类: ${result.className}")
-            println("-".repeat(30))
-            
-            if (result.methods.isEmpty()) {
-                println("  无属性访问")
-            } else {
-                result.methods.forEach { method ->
-                    println("  方法: ${method.methodName}")
-                    if (method.accessedProperties.isNotEmpty()) {
-                        println("    访问属性: ${method.accessedProperties.joinToString(", ")}")
-                    }
-                    if (method.modifiedProperties.isNotEmpty()) {
-                        println("    修改属性: ${method.modifiedProperties.joinToString(", ")}")
-                    }
-                }
-            }
-        }
-        
-        println("\n总计: 找到 ${results.size} 个 @AggregateRoot 类")
+    /**
+     * 生成并保存 JSON 文件
+     */
+    fun generateJsonFile(outputPath: String = "build/generated/ddd-analysis/example-analysis.json") {
+        val json = analyzeExampleClasses()
+        jsonGenerator.writeToFile(json, outputPath)
+        println("Generated DDD analysis JSON at: $outputPath")
     }
+}
+
+/**
+ * 主函数 - 用于测试
+ */
+fun main() {
+    val analyzer = StandaloneAnalyzer()
+    analyzer.generateJsonFile()
+    
+    // 输出 JSON 内容到控制台
+    println("\nGenerated JSON:")
+    println(analyzer.analyzeExampleClasses())
 }

@@ -231,4 +231,4 @@
   - Perform final integration testing with demo project
   - _Requirements: 7.3, 7.5_
 
-- [x] 17. 调整代码，将json生成到build/resources/main/META-INF/pragmaddd下，test生成到build/resources/test/META-INF/pragmaddd
+- [ ] 17. demo中使用pragma-ddd-analyzer插件 如果使用build 只会在build/resources/test/META-INF/pragmaddd下生成json，如果执行compileKotlin 只会在build/resources/main/META-INF/pragmaddd下生成json这明显不正确

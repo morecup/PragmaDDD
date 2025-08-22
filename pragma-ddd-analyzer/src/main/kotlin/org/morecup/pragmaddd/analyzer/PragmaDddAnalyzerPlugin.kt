@@ -218,23 +218,22 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             // Determine if this is a test compilation
             val isTestCompilation = kotlinCompilation.name.contains("test", ignoreCase = true)
             
-            // Pass output directory to compiler plugin - different for main and test
+            // Use consistent output directory for both main and test compilations
+            // This ensures both JSON files are generated in the same location
             val baseOutputDir = extension.outputDirectory.get()
-            val sourceSetDir = if (isTestCompilation) "test" else "main"
-            val fullOutputDir = "$baseOutputDir/$sourceSetDir"
             
             val resolvedOutputDir = if (baseOutputDir.startsWith("/") || (baseOutputDir.length > 1 && baseOutputDir[1] == ':')) {
-                // Absolute path - append source set directory directly using File.separator
-                "$baseOutputDir${File.separator}$sourceSetDir"
+                // Absolute path - use main resources directory for consistent JAR packaging
+                "$baseOutputDir${File.separator}main"
             } else {
-                // Relative path - resolve relative to project directory
-                project.layout.projectDirectory.dir(fullOutputDir).asFile.absolutePath
+                // Relative path - resolve relative to project directory, always use main resources
+                project.layout.projectDirectory.dir("$baseOutputDir/main").asFile.absolutePath
             }
             options.add(SubpluginOption(key = "outputDirectory", value = resolvedOutputDir))
             
             // Skip test compilation if includeTestSources is false
             if (isTestCompilation && !extension.includeTestSources.get()) {
-                project.logger.info("DDD Analyzer: Skipping test compilation '${kotlinCompilation.name}' as includeTestSources is disabled")
+                project.logger.warn("DDD Analyzer: Skipping test compilation '${kotlinCompilation.name}' as includeTestSources is disabled")
                 return@provider emptyList<SubpluginOption>()
             }
             

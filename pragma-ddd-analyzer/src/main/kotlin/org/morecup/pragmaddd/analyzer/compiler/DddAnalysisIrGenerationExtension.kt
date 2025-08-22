@@ -125,6 +125,9 @@ class DddAnalysisIrGenerationExtension(
         
         println("DDD Analyzer: Output directory configured: $outputDirectory")
         
+        // Load existing metadata from previous compilations
+        loadExistingMetadata()
+        
         // Find all classes in the module with performance optimization
         val allClasses = mutableListOf<IrClass>()
         val classCollectionStart = System.currentTimeMillis()
@@ -240,10 +243,16 @@ class DddAnalysisIrGenerationExtension(
         val testSourcesCount = metadataCollector.getTestSourcesMetadata().size
         println("DDD Analyzer: Successfully collected metadata - Main: $mainSourcesCount, Test: $testSourcesCount")
         
+        // Save current metadata for future compilations
+        saveCurrentMetadata()
+        
         // Generate and write JSON files to META-INF directory
         try {
             generateAndWriteJsonFiles()
             println("DDD Analyzer: Successfully generated and packaged JSON metadata files for $sourceType sources")
+            
+            // Clean up temporary metadata files after successful generation
+            cleanupTemporaryFiles()
         } catch (e: Exception) {
             println("DDD Analyzer: Error generating JSON files: ${e.message}")
             if (System.getProperty("ddd.analyzer.debug") == "true") {
@@ -282,9 +291,9 @@ class DddAnalysisIrGenerationExtension(
             return
         }
         
-        // Generate and write main sources JSON if we have main source metadata and this is main compilation
+        // Generate and write main sources JSON if we have main source metadata
         val mainSourcesMetadata = metadataCollector.getMainSourcesMetadata()
-        if (mainSourcesMetadata.isNotEmpty() && !isTestCompilation) {
+        if (mainSourcesMetadata.isNotEmpty()) {
             val mainJson = jsonGenerator.generateMainSourcesJson(mainSourcesMetadata)
             val mainFileName = "$jsonFileNaming-main.json"
             resourceWriter.writeMainSourcesJson(mainJson, outputDir, mainFileName)
@@ -298,9 +307,9 @@ class DddAnalysisIrGenerationExtension(
             }
         }
         
-        // Generate and write test sources JSON if we have test source metadata and this is test compilation
+        // Generate and write test sources JSON if we have test source metadata
         val testSourcesMetadata = metadataCollector.getTestSourcesMetadata()
-        if (testSourcesMetadata.isNotEmpty() && isTestCompilation) {
+        if (testSourcesMetadata.isNotEmpty()) {
             val testJson = jsonGenerator.generateTestSourcesJson(testSourcesMetadata)
             val testFileName = "$jsonFileNaming-test.json"
             resourceWriter.writeTestSourcesJson(testJson, outputDir, testFileName)
@@ -323,6 +332,107 @@ class DddAnalysisIrGenerationExtension(
             }
         } else {
             println("DDD Analyzer: No JSON files generated for $sourceType compilation")
+        }
+    }
+    
+    /**
+     * Loads existing metadata from previous compilations to ensure both main and test
+     * metadata are available regardless of which compilation runs
+     */
+    private fun loadExistingMetadata() {
+        val outputDir = outputDirectory ?: return
+        
+        try {
+            // Try to load existing main metadata
+            val mainMetadataFile = java.io.File(outputDir, ".ddd-analyzer-main-metadata.json")
+            if (mainMetadataFile.exists()) {
+                val mainJson = mainMetadataFile.readText()
+                val mainMetadata = jsonGenerator.parseMainSourcesJson(mainJson)
+                mainMetadata.forEach { metadata ->
+                    metadataCollector.addToMainSources(metadata)
+                }
+                println("DDD Analyzer: Loaded ${mainMetadata.size} main source metadata entries from previous compilation")
+            }
+            
+            // Try to load existing test metadata
+            val testMetadataFile = java.io.File(outputDir, ".ddd-analyzer-test-metadata.json")
+            if (testMetadataFile.exists()) {
+                val testJson = testMetadataFile.readText()
+                val testMetadata = jsonGenerator.parseTestSourcesJson(testJson)
+                testMetadata.forEach { metadata ->
+                    metadataCollector.addToTestSources(metadata)
+                }
+                println("DDD Analyzer: Loaded ${testMetadata.size} test source metadata entries from previous compilation")
+            }
+        } catch (e: Exception) {
+            println("DDD Analyzer: Warning - Could not load existing metadata: ${e.message}")
+            // Continue without existing metadata - this is not a critical error
+        }
+    }
+    
+    /**
+     * Saves current metadata to temporary files for future compilations
+     */
+    private fun saveCurrentMetadata() {
+        val outputDir = outputDirectory ?: return
+        
+        try {
+            // Ensure output directory exists
+            val outputDirFile = java.io.File(outputDir)
+            if (!outputDirFile.exists()) {
+                outputDirFile.mkdirs()
+            }
+            
+            // Save main metadata if we have any
+            val mainMetadata = metadataCollector.getMainSourcesMetadata()
+            if (mainMetadata.isNotEmpty()) {
+                val mainJson = jsonGenerator.generateMainSourcesJson(mainMetadata)
+                val mainMetadataFile = java.io.File(outputDir, ".ddd-analyzer-main-metadata.json")
+                mainMetadataFile.writeText(mainJson)
+                println("DDD Analyzer: Saved ${mainMetadata.size} main source metadata entries for future compilations")
+            }
+            
+            // Save test metadata if we have any
+            val testMetadata = metadataCollector.getTestSourcesMetadata()
+            if (testMetadata.isNotEmpty()) {
+                val testJson = jsonGenerator.generateTestSourcesJson(testMetadata)
+                val testMetadataFile = java.io.File(outputDir, ".ddd-analyzer-test-metadata.json")
+                testMetadataFile.writeText(testJson)
+                println("DDD Analyzer: Saved ${testMetadata.size} test source metadata entries for future compilations")
+            }
+        } catch (e: Exception) {
+            println("DDD Analyzer: Warning - Could not save metadata for future compilations: ${e.message}")
+            // Continue - this is not a critical error
+        }
+    }
+    
+    /**
+     * Cleans up temporary metadata files after successful JSON generation
+     */
+    private fun cleanupTemporaryFiles() {
+        val outputDir = outputDirectory ?: return
+        
+        try {
+            val mainMetadataFile = java.io.File(outputDir, ".ddd-analyzer-main-metadata.json")
+            val testMetadataFile = java.io.File(outputDir, ".ddd-analyzer-test-metadata.json")
+            
+            // Only clean up if both main and test JSON files have been generated successfully
+            val mainJsonExists = resourceWriter.verifyJsonFileWritten(outputDir, "pragmaddd/$jsonFileNaming-main.json")
+            val testJsonExists = resourceWriter.verifyJsonFileWritten(outputDir, "pragmaddd/$jsonFileNaming-test.json")
+            
+            // Clean up temporary files if final JSON files exist
+            if (mainJsonExists && mainMetadataFile.exists()) {
+                mainMetadataFile.delete()
+                println("DDD Analyzer: Cleaned up temporary main metadata file")
+            }
+            
+            if (testJsonExists && testMetadataFile.exists()) {
+                testMetadataFile.delete()
+                println("DDD Analyzer: Cleaned up temporary test metadata file")
+            }
+        } catch (e: Exception) {
+            println("DDD Analyzer: Warning - Could not clean up temporary files: ${e.message}")
+            // This is not critical - continue
         }
     }
 }

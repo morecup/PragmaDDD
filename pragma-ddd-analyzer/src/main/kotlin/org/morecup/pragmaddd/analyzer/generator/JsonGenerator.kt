@@ -52,6 +52,16 @@ interface JsonGenerator {
      * 验证 JSON 格式
      */
     fun validateJson(json: String): Boolean
+    
+    /**
+     * 解析主源码 JSON 为 ClassMetadata 列表
+     */
+    fun parseMainSourcesJson(json: String): List<ClassMetadata>
+    
+    /**
+     * 解析测试源码 JSON 为 ClassMetadata 列表
+     */
+    fun parseTestSourcesJson(json: String): List<ClassMetadata>
 }
 
 /**
@@ -247,6 +257,42 @@ class JsonGeneratorImpl(
             true
         } catch (e: Exception) {
             false
+        }
+    }
+    
+    /**
+     * 解析主源码 JSON 为 ClassMetadata 列表
+     */
+    override fun parseMainSourcesJson(json: String): List<ClassMetadata> {
+        return try {
+            val result = objectMapper.readValue(json, AnalysisResult::class.java)
+            result.classes
+        } catch (e: Exception) {
+            errorReporter?.reportError(
+                AnalysisError.JsonGenerationError(
+                    message = "Failed to parse main sources JSON: ${e.message}",
+                    cause = e
+                )
+            )
+            emptyList()
+        }
+    }
+    
+    /**
+     * 解析测试源码 JSON 为 ClassMetadata 列表
+     */
+    override fun parseTestSourcesJson(json: String): List<ClassMetadata> {
+        return try {
+            val result = objectMapper.readValue(json, AnalysisResult::class.java)
+            result.classes
+        } catch (e: Exception) {
+            errorReporter?.reportError(
+                AnalysisError.JsonGenerationError(
+                    message = "Failed to parse test sources JSON: ${e.message}",
+                    cause = e
+                )
+            )
+            emptyList()
         }
     }
     

@@ -22,19 +22,9 @@ interface MetadataCollector {
     fun addToMainSources(metadata: ClassMetadata)
     
     /**
-     * Adds metadata to test sources collection
-     */
-    fun addToTestSources(metadata: ClassMetadata)
-    
-    /**
      * Gets all main sources metadata
      */
     fun getMainSourcesMetadata(): List<ClassMetadata>
-    
-    /**
-     * Gets all test sources metadata
-     */
-    fun getTestSourcesMetadata(): List<ClassMetadata>
     
     /**
      * Validates metadata consistency and integrity
@@ -49,69 +39,34 @@ interface MetadataCollector {
     /**
      * Clears all collected metadata
      */
-    fun clear()
+    fun clearMetadata()
     
     /**
-     * Gets total count of collected metadata
+     * Gets memory usage statistics
      */
-    fun getTotalCount(): Int
-    
-    /**
-     * Checks if any metadata has been collected
-     */
-    fun hasMetadata(): Boolean
+    fun getMemoryUsage(): MemoryUsageStats
 }
 
 /**
- * Result of metadata validation
+ * Validation result containing errors and warnings
  */
 data class ValidationResult(
     val isValid: Boolean,
-    val errors: List<ValidationError> = emptyList(),
-    val warnings: List<ValidationWarning> = emptyList()
+    val errors: List<AnalysisError>,
+    val warnings: List<AnalysisWarning>
 )
 
 /**
- * Validation error for metadata inconsistencies
+ * Memory usage statistics for monitoring
  */
-data class ValidationError(
-    val className: String,
-    val message: String,
-    val type: ValidationErrorType
+data class MemoryUsageStats(
+    val mainSourcesCount: Int,
+    val approximateMemoryUsage: Long,
+    val maxMemoryThreshold: Long
 )
 
 /**
- * Validation warning for potential issues
- */
-data class ValidationWarning(
-    val className: String,
-    val message: String,
-    val type: ValidationWarningType
-)
-
-/**
- * Types of validation errors
- */
-enum class ValidationErrorType {
-    DUPLICATE_CLASS,
-    INVALID_PACKAGE_NAME,
-    MISSING_REQUIRED_FIELD,
-    INVALID_ANNOTATION_TYPE
-}
-
-/**
- * Types of validation warnings
- */
-enum class ValidationWarningType {
-    MISSING_DOCUMENTATION,
-    EMPTY_METHOD_LIST,
-    EMPTY_PROPERTY_LIST,
-    INCONSISTENT_NAMING
-}
-
-/**
- * Implementation of MetadataCollector that collects and manages analysis results
- * with validation and aggregation capabilities, optimized for memory usage
+ * Implementation of MetadataCollector with validation and aggregation capabilities, optimized for memory usage
  */
 class MetadataCollectorImpl(
     private val classAnalyzer: ClassAnalyzer,
@@ -119,22 +74,43 @@ class MetadataCollectorImpl(
     private val maxMetadataEntries: Int = 1000
 ) : MetadataCollector {
     
-    // Use ArrayList with initial capacity to reduce memory allocations
-    private val mainSourcesMetadata = ArrayList<ClassMetadata>(50)
-    private val testSourcesMetadata = ArrayList<ClassMetadata>(50)
-    
-    // Track memory usage
-    private var approximateMemoryUsage = 0L
+    private val mainSourcesMetadata = mutableListOf<ClassMetadata>()
     
     /**
-     * Collects class metadata from IR analysis
+     * Collects class metadata from IR class declaration with error handling
      */
     override fun collectClassMetadata(irClass: IrClass): ClassMetadata? {
         return try {
-            classAnalyzer.analyzeClass(irClass)
+            val metadata = classAnalyzer.analyzeClass(irClass)
+            
+            // Check if metadata was generated
+            if (metadata == null) {
+                errorReporter.reportError(
+                    AnalysisError.ClassAnalysisError(
+                        className = irClass.name.asString(),
+                        message = "Class analyzer returned null metadata",
+                        cause = null
+                    )
+                )
+                return null
+            }
+            
+            // Validate metadata before adding
+            if (validateClassMetadata(metadata)) {
+                metadata
+            } else {
+                errorReporter.reportError(
+                    AnalysisError.ClassAnalysisError(
+                        className = irClass.name.asString(),
+                        message = "Generated metadata failed validation",
+                        cause = IllegalStateException("Invalid metadata structure")
+                    )
+                )
+                null
+            }
         } catch (e: Exception) {
             errorReporter.reportError(
-                AnalysisError.MetadataCollectionError(
+                AnalysisError.ClassAnalysisError(
                     className = irClass.name.asString(),
                     message = "Failed to collect class metadata: ${e.message}",
                     cause = e
@@ -145,45 +121,36 @@ class MetadataCollectorImpl(
     }
     
     /**
-     * Adds metadata to main sources with validation and memory management
+     * Adds metadata to main sources collection with memory monitoring
      */
     override fun addToMainSources(metadata: ClassMetadata) {
         // Check memory limits before adding
-        if (getTotalCount() >= maxMetadataEntries) {
+        if (mainSourcesMetadata.size >= maxMetadataEntries) {
             errorReporter.reportWarning(
                 AnalysisWarning(
-                    message = "Maximum metadata entries ($maxMetadataEntries) reached, skipping class: ${metadata.className}",
-                    className = "${metadata.packageName}.${metadata.className}"
+                    message = "Maximum metadata entries reached ($maxMetadataEntries), skipping additional entries",
+                    className = metadata.className
                 )
             )
             return
         }
         
-        if (validateSingleMetadata(metadata, mainSourcesMetadata)) {
-            mainSourcesMetadata.add(metadata)
-            updateMemoryUsage(metadata)
-        }
-    }
-    
-    /**
-     * Adds metadata to test sources with validation and memory management
-     */
-    override fun addToTestSources(metadata: ClassMetadata) {
-        // Check memory limits before adding
-        if (getTotalCount() >= maxMetadataEntries) {
+        // Check for duplicates
+        val existingMetadata = mainSourcesMetadata.find { it.className == metadata.className }
+        if (existingMetadata != null) {
             errorReporter.reportWarning(
                 AnalysisWarning(
-                    message = "Maximum metadata entries ($maxMetadataEntries) reached, skipping class: ${metadata.className}",
-                    className = "${metadata.packageName}.${metadata.className}"
+                    message = "Duplicate class metadata found, replacing existing entry",
+                    className = metadata.className
                 )
             )
-            return
+            mainSourcesMetadata.removeAll { it.className == metadata.className }
         }
         
-        if (validateSingleMetadata(metadata, testSourcesMetadata)) {
-            testSourcesMetadata.add(metadata)
-            updateMemoryUsage(metadata)
-        }
+        mainSourcesMetadata.add(metadata)
+        
+        // Monitor memory usage
+        monitorMemoryUsage()
     }
     
     /**
@@ -194,27 +161,25 @@ class MetadataCollectorImpl(
     }
     
     /**
-     * Gets all test sources metadata as immutable list
-     */
-    override fun getTestSourcesMetadata(): List<ClassMetadata> {
-        return testSourcesMetadata.toList()
-    }
-    
-    /**
-     * Validates all collected metadata for consistency and integrity
+     * Validates metadata consistency and integrity
      */
     override fun validateMetadata(): ValidationResult {
-        val errors = mutableListOf<ValidationError>()
-        val warnings = mutableListOf<ValidationWarning>()
+        val errors = mutableListOf<AnalysisError>()
+        val warnings = mutableListOf<AnalysisWarning>()
         
         // Validate main sources
-        validateMetadataList(mainSourcesMetadata, errors, warnings)
+        validateMetadataCollection(mainSourcesMetadata, "main", errors, warnings)
         
-        // Validate test sources
-        validateMetadataList(testSourcesMetadata, errors, warnings)
-        
-        // Check for duplicates between main and test sources
-        checkCrossSourceDuplicates(errors)
+        // Check for overall consistency
+        val totalClasses = mainSourcesMetadata.size
+        if (totalClasses == 0) {
+            warnings.add(
+                AnalysisWarning(
+                    message = "No DDD classes found in any source set",
+                    className = "MetadataCollector"
+                )
+            )
+        }
         
         return ValidationResult(
             isValid = errors.isEmpty(),
@@ -224,47 +189,46 @@ class MetadataCollectorImpl(
     }
     
     /**
-     * Aggregates metadata from another collector
+     * Validates a collection of metadata
      */
-    override fun aggregateMetadata(otherCollector: MetadataCollector) {
-        // Add main sources metadata
-        otherCollector.getMainSourcesMetadata().forEach { metadata ->
-            addToMainSources(metadata)
+    private fun validateMetadataCollection(
+        metadata: List<ClassMetadata>,
+        sourceType: String,
+        errors: MutableList<AnalysisError>,
+        warnings: MutableList<AnalysisWarning>
+    ) {
+        // Check for duplicate class names
+        val classNames = metadata.map { it.className }
+        val duplicates = classNames.groupBy { it }.filter { it.value.size > 1 }.keys
+        
+        duplicates.forEach { className ->
+            errors.add(
+                AnalysisError.MetadataCollectionError(
+                    className = className,
+                    message = "Duplicate class found in $sourceType sources: $className",
+                    cause = null
+                )
+            )
         }
         
-        // Add test sources metadata
-        otherCollector.getTestSourcesMetadata().forEach { metadata ->
-            addToTestSources(metadata)
+        // Validate individual metadata entries
+        metadata.forEach { classMetadata ->
+            if (!validateClassMetadata(classMetadata)) {
+                errors.add(
+                    AnalysisError.MetadataCollectionError(
+                        className = classMetadata.className,
+                        message = "Invalid metadata structure for class: ${classMetadata.className}",
+                        cause = null
+                    )
+                )
+            }
         }
-    }
-    
-    /**
-     * Clears all collected metadata and resets memory tracking
-     */
-    override fun clear() {
-        mainSourcesMetadata.clear()
-        testSourcesMetadata.clear()
-        approximateMemoryUsage = 0L
         
-        // Suggest garbage collection after clearing large amounts of data
-        if (approximateMemoryUsage > 10_000_000) { // 10MB threshold
-            System.gc()
-        }
-    }
-    
-    /**
-     * Updates approximate memory usage tracking
-     */
-    private fun updateMemoryUsage(metadata: ClassMetadata) {
-        // Rough estimation of memory usage per metadata entry
-        val estimatedSize = estimateMetadataSize(metadata)
-        approximateMemoryUsage += estimatedSize
-        
-        // Log memory usage warnings
-        if (approximateMemoryUsage > 50_000_000) { // 50MB threshold
-            errorReporter.reportWarning(
+        // Check for reasonable metadata size
+        if (metadata.size > maxMetadataEntries / 2) {
+            warnings.add(
                 AnalysisWarning(
-                    message = "High memory usage detected: ${approximateMemoryUsage / 1_000_000}MB",
+                    message = "Large number of classes in $sourceType sources: ${metadata.size}",
                     className = "MetadataCollector"
                 )
             )
@@ -272,187 +236,80 @@ class MetadataCollectorImpl(
     }
     
     /**
-     * Estimates memory size of a metadata entry
+     * Validates individual class metadata
      */
-    private fun estimateMetadataSize(metadata: ClassMetadata): Long {
-        var size = 0L
-        
-        // Base object overhead
-        size += 100
-        
-        // String fields
-        size += metadata.className.length * 2L
-        size += metadata.packageName.length * 2L
-        
-        // Properties
-        size += metadata.properties.size * 200L // Rough estimate per property
-        
-        // Methods
-        size += metadata.methods.size * 300L // Rough estimate per method
-        
-        // Annotations
-        size += metadata.annotations.size * 100L // Rough estimate per annotation
-        
-        // Documentation
-        metadata.documentation?.let { doc ->
-            size += (doc.summary?.length ?: 0) * 2L
-            size += (doc.description?.length ?: 0) * 2L
-            size += doc.parameters.values.sumOf { it.length * 2L }
-            size += (doc.returnDescription?.length ?: 0) * 2L
+    private fun validateClassMetadata(metadata: ClassMetadata): Boolean {
+        return try {
+            // Basic validation checks
+            metadata.className.isNotBlank() &&
+            metadata.packageName.isNotBlank() &&
+            metadata.properties.isNotEmpty() || metadata.methods.isNotEmpty()
+        } catch (e: Exception) {
+            false
         }
-        
-        return size
     }
     
     /**
-     * Gets current approximate memory usage in bytes
+     * Aggregates metadata from another collector
      */
-    fun getApproximateMemoryUsage(): Long {
-        return approximateMemoryUsage
-    }
-    
-    /**
-     * Gets total count of all collected metadata
-     */
-    override fun getTotalCount(): Int {
-        return mainSourcesMetadata.size + testSourcesMetadata.size
-    }
-    
-    /**
-     * Checks if any metadata has been collected
-     */
-    override fun hasMetadata(): Boolean {
-        return mainSourcesMetadata.isNotEmpty() || testSourcesMetadata.isNotEmpty()
-    }
-    
-    /**
-     * Validates a single metadata entry before adding to collection
-     */
-    private fun validateSingleMetadata(metadata: ClassMetadata, existingMetadata: List<ClassMetadata>): Boolean {
-        val fullClassName = "${metadata.packageName}.${metadata.className}"
-        
-        // Check for duplicate class names
-        val isDuplicate = existingMetadata.any { existing ->
-            "${existing.packageName}.${existing.className}" == fullClassName
+    override fun aggregateMetadata(otherCollector: MetadataCollector) {
+        // Add main sources from other collector
+        otherCollector.getMainSourcesMetadata().forEach { metadata ->
+            addToMainSources(metadata)
         }
+    }
+    
+    /**
+     * Clears all collected metadata
+     */
+    override fun clearMetadata() {
+        mainSourcesMetadata.clear()
+    }
+    
+    /**
+     * Gets memory usage statistics
+     */
+    override fun getMemoryUsage(): MemoryUsageStats {
+        val approximateMemoryUsage = calculateApproximateMemoryUsage()
         
-        if (isDuplicate) {
+        return MemoryUsageStats(
+            mainSourcesCount = mainSourcesMetadata.size,
+            approximateMemoryUsage = approximateMemoryUsage,
+            maxMemoryThreshold = maxMetadataEntries * 50_000L // Rough estimate: 50KB per metadata entry
+        )
+    }
+    
+    /**
+     * Calculates approximate memory usage
+     */
+    private fun calculateApproximateMemoryUsage(): Long {
+        // Rough estimation based on metadata structure
+        val baseClassSize = 1000L // Base size per class metadata
+        val methodSize = 200L // Average size per method
+        val propertySize = 100L // Average size per property
+        
+        return mainSourcesMetadata.sumOf { metadata ->
+            baseClassSize + 
+            (metadata.methods.size * methodSize) + 
+            (metadata.properties.size * propertySize)
+        }
+    }
+    
+    /**
+     * Monitors memory usage and reports warnings if thresholds are exceeded
+     */
+    private fun monitorMemoryUsage() {
+        val memoryStats = getMemoryUsage()
+        val approximateMemoryUsage = memoryStats.approximateMemoryUsage
+        
+        // Report warning if memory usage is high
+        if (approximateMemoryUsage > memoryStats.maxMemoryThreshold) {
             errorReporter.reportWarning(
                 AnalysisWarning(
-                    message = "Duplicate class detected: $fullClassName",
-                    className = fullClassName
+                    message = "High memory usage detected: ${approximateMemoryUsage / 1_000_000}MB",
+                    className = "MetadataCollector"
                 )
             )
         }
-        
-        // Basic validation - ensure required fields are present
-        if (metadata.className.isBlank()) {
-            errorReporter.reportError(
-                AnalysisError.MetadataCollectionError(
-                    className = fullClassName,
-                    message = "Class name cannot be blank",
-                    cause = null
-                )
-            )
-            return false
-        }
-        
-        return true
-    }
-    
-    /**
-     * Validates a list of metadata entries
-     */
-    private fun validateMetadataList(
-        metadataList: List<ClassMetadata>,
-        errors: MutableList<ValidationError>,
-        warnings: MutableList<ValidationWarning>
-    ) {
-        val classNames = mutableSetOf<String>()
-        
-        metadataList.forEach { metadata ->
-            val fullClassName = "${metadata.packageName}.${metadata.className}"
-            
-            // Check for duplicates within the same source type
-            if (!classNames.add(fullClassName)) {
-                errors.add(ValidationError(
-                    className = fullClassName,
-                    message = "Duplicate class found in the same source set",
-                    type = ValidationErrorType.DUPLICATE_CLASS
-                ))
-            }
-            
-            // Validate required fields
-            if (metadata.className.isBlank()) {
-                errors.add(ValidationError(
-                    className = fullClassName,
-                    message = "Class name cannot be blank",
-                    type = ValidationErrorType.MISSING_REQUIRED_FIELD
-                ))
-            }
-            
-            // Validate package name format
-            if (metadata.packageName.isNotBlank() && !isValidPackageName(metadata.packageName)) {
-                errors.add(ValidationError(
-                    className = fullClassName,
-                    message = "Invalid package name format: ${metadata.packageName}",
-                    type = ValidationErrorType.INVALID_PACKAGE_NAME
-                ))
-            }
-            
-            // Check for missing documentation
-            if (metadata.documentation == null) {
-                warnings.add(ValidationWarning(
-                    className = fullClassName,
-                    message = "Class has no documentation",
-                    type = ValidationWarningType.MISSING_DOCUMENTATION
-                ))
-            }
-            
-            // Check for empty method list
-            if (metadata.methods.isEmpty()) {
-                warnings.add(ValidationWarning(
-                    className = fullClassName,
-                    message = "Class has no methods",
-                    type = ValidationWarningType.EMPTY_METHOD_LIST
-                ))
-            }
-            
-            // Check for empty property list
-            if (metadata.properties.isEmpty()) {
-                warnings.add(ValidationWarning(
-                    className = fullClassName,
-                    message = "Class has no properties",
-                    type = ValidationWarningType.EMPTY_PROPERTY_LIST
-                ))
-            }
-        }
-    }
-    
-    /**
-     * Checks for duplicate classes between main and test sources
-     */
-    private fun checkCrossSourceDuplicates(errors: MutableList<ValidationError>) {
-        val mainClassNames = mainSourcesMetadata.map { "${it.packageName}.${it.className}" }.toSet()
-        val testClassNames = testSourcesMetadata.map { "${it.packageName}.${it.className}" }.toSet()
-        
-        val duplicates = mainClassNames.intersect(testClassNames)
-        duplicates.forEach { className ->
-            errors.add(ValidationError(
-                className = className,
-                message = "Class exists in both main and test sources",
-                type = ValidationErrorType.DUPLICATE_CLASS
-            ))
-        }
-    }
-    
-    /**
-     * Validates package name format
-     */
-    private fun isValidPackageName(packageName: String): Boolean {
-        if (packageName.isBlank()) return true // Empty package is valid
-        
-        val packageRegex = Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$")
-        return packageRegex.matches(packageName)
     }
 }

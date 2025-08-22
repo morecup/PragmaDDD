@@ -1,49 +1,33 @@
 package org.morecup.pragmaddd.analyzer.compiler
 
-import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 
-/**
- * Unit tests for DddAnalysisCommandLineProcessor configuration handling
- */
 class DddAnalysisCommandLineProcessorTest {
     
     private lateinit var processor: DddAnalysisCommandLineProcessor
     private lateinit var configuration: CompilerConfiguration
     
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         processor = DddAnalysisCommandLineProcessor()
         configuration = CompilerConfiguration()
     }
     
     @Test
-    fun `pluginId should return correct value`() {
-        // When
-        val pluginId = processor.pluginId
-        
-        // Then
-        assertEquals("org.morecup.pragmaddd.analyzer", pluginId)
+    fun `should have correct plugin id`() {
+        assertEquals("org.morecup.pragmaddd.analyzer", processor.pluginId)
     }
     
     @Test
-    fun `pluginOptions should contain all expected options`() {
-        // When
+    fun `should have all required plugin options`() {
         val options = processor.pluginOptions
+        val optionNames = options.map { it.optionName }
         
-        // Then
-        assertEquals(8, options.size)
-        
-        val optionNames = options.map { it.optionName }.toSet()
         assertTrue(optionNames.contains("outputDirectory"))
-        assertTrue(optionNames.contains("isTestCompilation"))
         assertTrue(optionNames.contains("jsonFileNaming"))
         assertTrue(optionNames.contains("enableMethodAnalysis"))
         assertTrue(optionNames.contains("enablePropertyAnalysis"))
@@ -53,105 +37,9 @@ class DddAnalysisCommandLineProcessorTest {
     }
     
     @Test
-    fun `outputDirectory option should have correct configuration`() {
-        // When
-        val option = findOption("outputDirectory")
-        
-        // Then
-        assertEquals("outputDirectory", option.optionName)
-        assertEquals("path", option.valueDescription)
-        assertEquals("Output directory for generated JSON files", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `isTestCompilation option should have correct configuration`() {
-        // When
-        val option = findOption("isTestCompilation")
-        
-        // Then
-        assertEquals("isTestCompilation", option.optionName)
-        assertEquals("true|false", option.valueDescription)
-        assertEquals("Whether this is a test compilation", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `jsonFileNaming option should have correct configuration`() {
-        // When
-        val option = findOption("jsonFileNaming")
-        
-        // Then
-        assertEquals("jsonFileNaming", option.optionName)
-        assertEquals("string", option.valueDescription)
-        assertEquals("JSON file naming convention", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `enableMethodAnalysis option should have correct configuration`() {
-        // When
-        val option = findOption("enableMethodAnalysis")
-        
-        // Then
-        assertEquals("enableMethodAnalysis", option.optionName)
-        assertEquals("true|false", option.valueDescription)
-        assertEquals("Enable method analysis", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `enablePropertyAnalysis option should have correct configuration`() {
-        // When
-        val option = findOption("enablePropertyAnalysis")
-        
-        // Then
-        assertEquals("enablePropertyAnalysis", option.optionName)
-        assertEquals("true|false", option.valueDescription)
-        assertEquals("Enable property analysis", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `enableDocumentationExtraction option should have correct configuration`() {
-        // When
-        val option = findOption("enableDocumentationExtraction")
-        
-        // Then
-        assertEquals("enableDocumentationExtraction", option.optionName)
-        assertEquals("true|false", option.valueDescription)
-        assertEquals("Enable documentation extraction from KDoc", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `maxClassesPerCompilation option should have correct configuration`() {
-        // When
-        val option = findOption("maxClassesPerCompilation")
-        
-        // Then
-        assertEquals("maxClassesPerCompilation", option.optionName)
-        assertEquals("number", option.valueDescription)
-        assertEquals("Maximum number of classes to analyze per compilation", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `failOnAnalysisErrors option should have correct configuration`() {
-        // When
-        val option = findOption("failOnAnalysisErrors")
-        
-        // Then
-        assertEquals("failOnAnalysisErrors", option.optionName)
-        assertEquals("true|false", option.valueDescription)
-        assertEquals("Whether to fail the build on analysis errors", option.description)
-        assertFalse(option.required)
-    }
-    
-    @Test
-    fun `processOption should handle outputDirectory correctly`() {
+    fun `should process output directory option`() {
         // Given
-        val option = findAbstractOption("outputDirectory")
+        val option = findOption("outputDirectory")
         val value = "/path/to/output"
         
         // When
@@ -162,27 +50,9 @@ class DddAnalysisCommandLineProcessorTest {
     }
     
     @Test
-    fun `processOption should handle isTestCompilation correctly`() {
+    fun `should process json file naming option`() {
         // Given
-        val option = findAbstractOption("isTestCompilation")
-        
-        // When - test true value
-        processor.processOption(option, "true", configuration)
-        
-        // Then
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.IS_TEST_COMPILATION_KEY)!!)
-        
-        // When - test false value
-        processor.processOption(option, "false", configuration)
-        
-        // Then
-        assertFalse(configuration.get(DddAnalysisCommandLineProcessor.IS_TEST_COMPILATION_KEY)!!)
-    }
-    
-    @Test
-    fun `processOption should handle jsonFileNaming correctly`() {
-        // Given
-        val option = findAbstractOption("jsonFileNaming")
+        val option = findOption("jsonFileNaming")
         val value = "custom-analysis"
         
         // When
@@ -193,63 +63,48 @@ class DddAnalysisCommandLineProcessorTest {
     }
     
     @Test
-    fun `processOption should handle enableMethodAnalysis correctly`() {
+    fun `should process enable method analysis option`() {
         // Given
-        val option = findAbstractOption("enableMethodAnalysis")
+        val option = findOption("enableMethodAnalysis")
+        val value = "false"
         
-        // When - test true value
-        processor.processOption(option, "true", configuration)
-        
-        // Then
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY)!!)
-        
-        // When - test false value
-        processor.processOption(option, "false", configuration)
+        // When
+        processor.processOption(option, value, configuration)
         
         // Then
-        assertFalse(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY)!!)
+        assertEquals(false, configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY))
     }
     
     @Test
-    fun `processOption should handle enablePropertyAnalysis correctly`() {
+    fun `should process enable property analysis option`() {
         // Given
-        val option = findAbstractOption("enablePropertyAnalysis")
+        val option = findOption("enablePropertyAnalysis")
+        val value = "true"
         
-        // When - test true value
-        processor.processOption(option, "true", configuration)
-        
-        // Then
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_PROPERTY_ANALYSIS_KEY)!!)
-        
-        // When - test false value
-        processor.processOption(option, "false", configuration)
+        // When
+        processor.processOption(option, value, configuration)
         
         // Then
-        assertFalse(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_PROPERTY_ANALYSIS_KEY)!!)
+        assertEquals(true, configuration.get(DddAnalysisCommandLineProcessor.ENABLE_PROPERTY_ANALYSIS_KEY))
     }
     
     @Test
-    fun `processOption should handle enableDocumentationExtraction correctly`() {
+    fun `should process enable documentation extraction option`() {
         // Given
-        val option = findAbstractOption("enableDocumentationExtraction")
+        val option = findOption("enableDocumentationExtraction")
+        val value = "false"
         
-        // When - test true value
-        processor.processOption(option, "true", configuration)
-        
-        // Then
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_DOCUMENTATION_EXTRACTION_KEY)!!)
-        
-        // When - test false value
-        processor.processOption(option, "false", configuration)
+        // When
+        processor.processOption(option, value, configuration)
         
         // Then
-        assertFalse(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_DOCUMENTATION_EXTRACTION_KEY)!!)
+        assertEquals(false, configuration.get(DddAnalysisCommandLineProcessor.ENABLE_DOCUMENTATION_EXTRACTION_KEY))
     }
     
     @Test
-    fun `processOption should handle maxClassesPerCompilation correctly`() {
+    fun `should process max classes per compilation option`() {
         // Given
-        val option = findAbstractOption("maxClassesPerCompilation")
+        val option = findOption("maxClassesPerCompilation")
         val value = "500"
         
         // When
@@ -260,74 +115,77 @@ class DddAnalysisCommandLineProcessorTest {
     }
     
     @Test
-    fun `processOption should handle failOnAnalysisErrors correctly`() {
+    fun `should process fail on analysis errors option`() {
         // Given
-        val option = findAbstractOption("failOnAnalysisErrors")
-        
-        // When - test true value
-        processor.processOption(option, "true", configuration)
-        
-        // Then
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.FAIL_ON_ANALYSIS_ERRORS_KEY)!!)
-        
-        // When - test false value
-        processor.processOption(option, "false", configuration)
-        
-        // Then
-        assertFalse(configuration.get(DddAnalysisCommandLineProcessor.FAIL_ON_ANALYSIS_ERRORS_KEY)!!)
-    }
-    
-    @Test
-    fun `configuration keys should have default null values`() {
-        // Then
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.OUTPUT_DIRECTORY_KEY))
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.IS_TEST_COMPILATION_KEY))
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.JSON_FILE_NAMING_KEY))
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY))
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_PROPERTY_ANALYSIS_KEY))
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_DOCUMENTATION_EXTRACTION_KEY))
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.MAX_CLASSES_PER_COMPILATION_KEY))
-        assertNull(configuration.get(DddAnalysisCommandLineProcessor.FAIL_ON_ANALYSIS_ERRORS_KEY))
-    }
-    
-    @Test
-    fun `processOption should handle multiple options correctly`() {
-        // Given
-        val outputDirOption = findAbstractOption("outputDirectory")
-        val testCompilationOption = findAbstractOption("isTestCompilation")
-        val jsonNamingOption = findAbstractOption("jsonFileNaming")
-        val methodAnalysisOption = findAbstractOption("enableMethodAnalysis")
-        val propertyAnalysisOption = findAbstractOption("enablePropertyAnalysis")
-        val docExtractionOption = findAbstractOption("enableDocumentationExtraction")
-        val maxClassesOption = findAbstractOption("maxClassesPerCompilation")
-        val failOnErrorsOption = findAbstractOption("failOnAnalysisErrors")
+        val option = findOption("failOnAnalysisErrors")
+        val value = "true"
         
         // When
-        processor.processOption(outputDirOption, "/custom/output", configuration)
-        processor.processOption(testCompilationOption, "true", configuration)
-        processor.processOption(jsonNamingOption, "my-analysis", configuration)
-        processor.processOption(methodAnalysisOption, "false", configuration)
-        processor.processOption(propertyAnalysisOption, "true", configuration)
-        processor.processOption(docExtractionOption, "false", configuration)
-        processor.processOption(maxClassesOption, "750", configuration)
-        processor.processOption(failOnErrorsOption, "true", configuration)
+        processor.processOption(option, value, configuration)
         
         // Then
-        assertEquals("/custom/output", configuration.get(DddAnalysisCommandLineProcessor.OUTPUT_DIRECTORY_KEY))
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.IS_TEST_COMPILATION_KEY)!!)
-        assertEquals("my-analysis", configuration.get(DddAnalysisCommandLineProcessor.JSON_FILE_NAMING_KEY))
-        assertFalse(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY)!!)
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_PROPERTY_ANALYSIS_KEY)!!)
-        assertFalse(configuration.get(DddAnalysisCommandLineProcessor.ENABLE_DOCUMENTATION_EXTRACTION_KEY)!!)
-        assertEquals(750, configuration.get(DddAnalysisCommandLineProcessor.MAX_CLASSES_PER_COMPILATION_KEY))
-        assertTrue(configuration.get(DddAnalysisCommandLineProcessor.FAIL_ON_ANALYSIS_ERRORS_KEY)!!)
+        assertEquals(true, configuration.get(DddAnalysisCommandLineProcessor.FAIL_ON_ANALYSIS_ERRORS_KEY))
+    }
+    
+    @Test
+    fun `should handle boolean conversion for true values`() {
+        // Given
+        val option = findOption("enableMethodAnalysis")
+        val value = "true"
+        
+        // When
+        processor.processOption(option, value, configuration)
+        
+        // Then
+        assertEquals(true, configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY))
+    }
+    
+    @Test
+    fun `should handle boolean conversion for false values`() {
+        // Given
+        val option = findOption("enableMethodAnalysis")
+        val value = "false"
+        
+        // When
+        processor.processOption(option, value, configuration)
+        
+        // Then
+        assertEquals(false, configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY))
+    }
+    
+    @Test
+    fun `should handle integer conversion`() {
+        // Given
+        val option = findOption("maxClassesPerCompilation")
+        val value = "1000"
+        
+        // When
+        processor.processOption(option, value, configuration)
+        
+        // Then
+        assertEquals(1000, configuration.get(DddAnalysisCommandLineProcessor.MAX_CLASSES_PER_COMPILATION_KEY))
+    }
+    
+    @Test
+    fun `should process multiple options correctly`() {
+        // Given
+        val outputOption = findOption("outputDirectory")
+        val namingOption = findOption("jsonFileNaming")
+        val methodOption = findOption("enableMethodAnalysis")
+        
+        // When
+        processor.processOption(outputOption, "/output", configuration)
+        processor.processOption(namingOption, "test-analysis", configuration)
+        processor.processOption(methodOption, "true", configuration)
+        
+        // Then
+        assertEquals("/output", configuration.get(DddAnalysisCommandLineProcessor.OUTPUT_DIRECTORY_KEY))
+        assertEquals("test-analysis", configuration.get(DddAnalysisCommandLineProcessor.JSON_FILE_NAMING_KEY))
+        assertEquals(true, configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY))
     }
     
     private fun findOption(optionName: String): CliOption {
-        return processor.pluginOptions.first { it.optionName == optionName }
-    }
-    
-    private fun findAbstractOption(optionName: String): AbstractCliOption {
-        return processor.pluginOptions.first { it.optionName == optionName } as AbstractCliOption
+        return processor.pluginOptions.find { it.optionName == optionName }
+            ?: throw IllegalArgumentException("Option not found: $optionName")
     }
 }

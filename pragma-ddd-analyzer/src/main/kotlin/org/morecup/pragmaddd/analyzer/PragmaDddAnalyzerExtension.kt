@@ -16,12 +16,7 @@ abstract class PragmaDddAnalyzerExtension {
      */
     abstract val outputDirectory: Property<String>
     
-    /**
-     * Whether to include test sources in analysis
-     * Default: true
-     * When false, test compilations will be skipped entirely
-     */
-    abstract val includeTestSources: Property<Boolean>
+
     
     /**
      * JSON file naming convention
@@ -160,7 +155,6 @@ abstract class PragmaDddAnalyzerExtension {
         return buildString {
             appendLine("Pragma DDD Analyzer Configuration:")
             appendLine("  Output Directory: ${outputDirectory.orNull}")
-            appendLine("  Include Test Sources: ${includeTestSources.orNull}")
             appendLine("  JSON File Naming: ${jsonFileNaming.orNull}")
             appendLine("  Enable Method Analysis: ${enableMethodAnalysis.orNull}")
             appendLine("  Enable Property Analysis: ${enablePropertyAnalysis.orNull}")
@@ -188,13 +182,6 @@ abstract class PragmaDddAnalyzerExtension {
      */
     fun getMainSourceJsonFileName(): String {
         return "${jsonFileNaming.get()}-main.json"
-    }
-    
-    /**
-     * Returns the test source JSON file name
-     */
-    fun getTestSourceJsonFileName(): String {
-        return "${jsonFileNaming.get()}-test.json"
     }
     
     /**

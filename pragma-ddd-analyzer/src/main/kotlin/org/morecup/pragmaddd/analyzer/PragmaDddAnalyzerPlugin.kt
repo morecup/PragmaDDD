@@ -31,7 +31,6 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
         
         // Set default values - use resources directory for JAR packaging
         extension.outputDirectory.convention("build/resources")
-        extension.includeTestSources.convention(true)
         extension.jsonFileNaming.convention("ddd-analysis")
         extension.enableMethodAnalysis.convention(true)
         extension.enablePropertyAnalysis.convention(true)
@@ -66,7 +65,6 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             configureTaskDependencies(evaluatedProject, extension)
             configureIncrementalCompilation(evaluatedProject)
             configureResourceGeneration(evaluatedProject, extension)
-            configureTestJarPackaging(evaluatedProject, extension)
         }
     }
     
@@ -89,14 +87,9 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             compileTask.doLast {
                 val outputDir = extension.getResolvedOutputDirectory(project.projectDir)
                 val mainJsonFile = File(outputDir, extension.getMainSourceJsonFileName())
-                val testJsonFile = File(outputDir, extension.getTestSourceJsonFileName())
                 
                 if (mainJsonFile.exists()) {
                     project.logger.info("DDD Analyzer: Generated main source analysis: ${mainJsonFile.absolutePath}")
-                }
-                
-                if (testJsonFile.exists() && extension.includeTestSources.get()) {
-                    project.logger.info("DDD Analyzer: Generated test source analysis: ${testJsonFile.absolutePath}")
                 }
             }
         }
@@ -151,47 +144,13 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
         // Note: Test JAR packaging is handled separately to avoid circular dependencies
     }
     
-    /**
-     * Configures test JAR packaging for test metadata
-     */
-    private fun configureTestJarPackaging(project: Project, extension: PragmaDddAnalyzerExtension) {
-        // Create test JAR task if it doesn't exist and test sources are enabled
-        if (extension.includeTestSources.get()) {
-            project.afterEvaluate { evaluatedProject ->
-                // Only create testJar if it doesn't exist to avoid conflicts
-                if (evaluatedProject.tasks.findByName("testJar") == null) {
-                    evaluatedProject.tasks.create("testJar", org.gradle.api.tasks.bundling.Jar::class.java) { jar ->
-                        jar.group = "build"
-                        jar.description = "Assembles a jar archive containing test DDD analysis metadata"
-                        jar.archiveClassifier.set("test")
-                        
-                        // Only include test analysis metadata, not test classes to avoid circular dependencies
-                        jar.doFirst {
-                            val outputDir = extension.getResolvedOutputDirectory(evaluatedProject.projectDir)
-                            val testJsonFile = File(outputDir, extension.getTestSourceJsonFileName())
-                            if (testJsonFile.exists()) {
-                                evaluatedProject.logger.info("DDD Analyzer: Including test JSON file in test JAR: ${testJsonFile.absolutePath}")
-                                // Add the JSON file to the JAR
-                                jar.from(testJsonFile.parentFile) {
-                                    it.include(testJsonFile.name)
-                                }
-                            }
-                        }
-                        
-                        // Make test JAR depend on test compilation but not on main classes
-                        evaluatedProject.tasks.findByName("compileTestKotlin")?.let { compileTestKotlin ->
-                            jar.dependsOn(compileTestKotlin)
-                        }
-                    }
-                }
-            }
-        }
-    }
+
     
     override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
-        // Apply to all Kotlin compilations
-        println("DDD Analyzer: isApplicable() called for compilation: ${kotlinCompilation.name}")
-        return true
+        // Only apply to main compilations, skip test compilations
+        val isTestCompilation = kotlinCompilation.name.contains("test", ignoreCase = true)
+        println("DDD Analyzer: isApplicable() called for compilation: ${kotlinCompilation.name}, isTest: $isTestCompilation")
+        return !isTestCompilation
     }
     
     override fun getCompilerPluginId(): String {
@@ -215,15 +174,11 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
         return project.provider {
             val options = mutableListOf<SubpluginOption>()
             
-            // Determine if this is a test compilation
-            val isTestCompilation = kotlinCompilation.name.contains("test", ignoreCase = true)
-            
-            // Use consistent output directory for both main and test compilations
-            // This ensures both JSON files are generated in the same location
+            // Use consistent output directory for main compilations only
             val baseOutputDir = extension.outputDirectory.get()
             
             val resolvedOutputDir = if (baseOutputDir.startsWith("/") || (baseOutputDir.length > 1 && baseOutputDir[1] == ':')) {
-                // Absolute path - use main resources directory for consistent JAR packaging
+                // Absolute path - use main resources directory for JAR packaging
                 "$baseOutputDir${File.separator}main"
             } else {
                 // Relative path - resolve relative to project directory, always use main resources
@@ -231,13 +186,7 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             }
             options.add(SubpluginOption(key = "outputDirectory", value = resolvedOutputDir))
             
-            // Skip test compilation if includeTestSources is false
-            if (isTestCompilation && !extension.includeTestSources.get()) {
-                project.logger.warn("DDD Analyzer: Skipping test compilation '${kotlinCompilation.name}' as includeTestSources is disabled")
-                return@provider emptyList<SubpluginOption>()
-            }
-            
-            options.add(SubpluginOption(key = "isTestCompilation", value = isTestCompilation.toString()))
+
             
             // Pass JSON file naming configuration
             options.add(SubpluginOption(key = "jsonFileNaming", value = extension.jsonFileNaming.get()))
@@ -251,7 +200,7 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             options.add(SubpluginOption(key = "maxClassesPerCompilation", value = extension.maxClassesPerCompilation.get().toString()))
             options.add(SubpluginOption(key = "failOnAnalysisErrors", value = extension.failOnAnalysisErrors.get().toString()))
             
-            project.logger.info("DDD Analyzer: Configuring compiler plugin for compilation '${kotlinCompilation.name}' with output directory: $resolvedOutputDir")
+            project.logger.info("DDD Analyzer: Configuring compiler plugin for main compilation '${kotlinCompilation.name}' with output directory: $resolvedOutputDir")
             project.logger.debug("DDD Analyzer: Configuration options: ${options.map { "${it.key}=${it.value}" }.joinToString(", ")}")
             
             options

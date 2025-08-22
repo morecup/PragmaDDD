@@ -23,19 +23,6 @@ interface ResourceWriter {
     )
     
     /**
-     * 将测试源码 JSON 写入 META-INF 目录
-     * 
-     * @param json JSON 内容
-     * @param outputDirectory 输出目录路径
-     * @param fileName 文件名，默认为 "ddd-analysis-test.json"
-     */
-    fun writeTestSourcesJson(
-        json: String,
-        outputDirectory: String,
-        fileName: String = "ddd-analysis-test.json"
-    )
-    
-    /**
      * 将 JSON 文件写入指定的资源目录
      * 
      * @param json JSON 内容
@@ -73,33 +60,21 @@ interface ResourceWriter {
      */
     fun getResourceFilePath(outputDirectory: String, resourcePath: String): Path
 }
-/*
-*
+
+/**
  * 资源写入器实现 - 将 JSON 文件写入 META-INF 目录以便打包到 JAR 中
  */
 class ResourceWriterImpl : ResourceWriter {
     
     companion object {
         private const val META_INF_DIR = "META-INF"
-        private const val DDD_ANALYSIS_DIR = "pragmaddd"
+        private const val DDD_ANALYSIS_DIR = "ddd-analysis"
     }
     
     /**
      * 将主源码 JSON 写入 META-INF 目录
      */
     override fun writeMainSourcesJson(
-        json: String,
-        outputDirectory: String,
-        fileName: String
-    ) {
-        val resourcePath = "$DDD_ANALYSIS_DIR/$fileName"
-        writeJsonToResource(json, resourcePath, outputDirectory)
-    }
-    
-    /**
-     * 将测试源码 JSON 写入 META-INF 目录
-     */
-    override fun writeTestSourcesJson(
         json: String,
         outputDirectory: String,
         fileName: String

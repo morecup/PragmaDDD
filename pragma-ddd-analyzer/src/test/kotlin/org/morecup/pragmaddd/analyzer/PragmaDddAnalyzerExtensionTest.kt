@@ -289,17 +289,7 @@ class PragmaDddAnalyzerExtensionTest {
         assertEquals("custom-analysis-main.json", fileName)
     }
     
-    @Test
-    fun `getTestSourceJsonFileName should return correct file name`() {
-        // Given
-        val extension = createMockExtension(jsonFileNaming = "custom-analysis")
-        
-        // When
-        val fileName = extension.getTestSourceJsonFileName()
-        
-        // Then
-        assertEquals("custom-analysis-test.json", fileName)
-    }
+    // Test removed - getTestSourceJsonFileName method no longer exists
     
     @Test
     fun `hasAnyAnalysisFeaturesEnabled should return true when any feature is enabled`() {
@@ -346,7 +336,6 @@ class PragmaDddAnalyzerExtensionTest {
         // Given
         val extension = createMockExtension(
             outputDirectory = "build/resources",
-            includeTestSources = true,
             jsonFileNaming = "custom-analysis",
             enableMethodAnalysis = false,
             enablePropertyAnalysis = true,
@@ -362,7 +351,6 @@ class PragmaDddAnalyzerExtensionTest {
         assertNotNull(summary)
         assertTrue(summary.contains("Pragma DDD Analyzer Configuration:"))
         assertTrue(summary.contains("Output Directory: build/resources"))
-        assertTrue(summary.contains("Include Test Sources: true"))
         assertTrue(summary.contains("JSON File Naming: custom-analysis"))
         assertTrue(summary.contains("Enable Method Analysis: false"))
         assertTrue(summary.contains("Enable Property Analysis: true"))
@@ -376,7 +364,6 @@ class PragmaDddAnalyzerExtensionTest {
         // Given
         val extension = createMockExtension(
             outputDirectory = null,
-            includeTestSources = null,
             jsonFileNaming = null,
             enableMethodAnalysis = null,
             enablePropertyAnalysis = null,
@@ -391,7 +378,6 @@ class PragmaDddAnalyzerExtensionTest {
         // Then
         assertNotNull(summary)
         assertTrue(summary.contains("Output Directory: null"))
-        assertTrue(summary.contains("Include Test Sources: null"))
         assertTrue(summary.contains("JSON File Naming: null"))
         assertTrue(summary.contains("Enable Method Analysis: null"))
         assertTrue(summary.contains("Enable Property Analysis: null"))
@@ -405,7 +391,6 @@ class PragmaDddAnalyzerExtensionTest {
      */
     private fun createMockExtension(
         outputDirectory: String? = "build/resources",
-        includeTestSources: Boolean? = true,
         jsonFileNaming: String? = "ddd-analysis",
         enableMethodAnalysis: Boolean? = true,
         enablePropertyAnalysis: Boolean? = true,
@@ -415,7 +400,6 @@ class PragmaDddAnalyzerExtensionTest {
     ): PragmaDddAnalyzerExtension {
         val extension = object : PragmaDddAnalyzerExtension() {
             override val outputDirectory: Property<String> = mock()
-            override val includeTestSources: Property<Boolean> = mock()
             override val jsonFileNaming: Property<String> = mock()
             override val enableMethodAnalysis: Property<Boolean> = mock()
             override val enablePropertyAnalysis: Property<Boolean> = mock()
@@ -426,7 +410,6 @@ class PragmaDddAnalyzerExtensionTest {
         
         // Configure mock properties
         whenever(extension.outputDirectory.orNull).thenReturn(outputDirectory)
-        whenever(extension.includeTestSources.orNull).thenReturn(includeTestSources)
         whenever(extension.jsonFileNaming.orNull).thenReturn(jsonFileNaming)
         whenever(extension.enableMethodAnalysis.orNull).thenReturn(enableMethodAnalysis)
         whenever(extension.enablePropertyAnalysis.orNull).thenReturn(enablePropertyAnalysis)

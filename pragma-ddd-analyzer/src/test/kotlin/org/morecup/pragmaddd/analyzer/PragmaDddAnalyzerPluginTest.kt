@@ -40,7 +40,7 @@ class PragmaDddAnalyzerPluginTest {
         
         // Verify default values
         assertEquals("build/resources", extension.outputDirectory.get())
-        assertEquals(true, extension.includeTestSources.get())
+        // includeTestSources property removed
         assertEquals("ddd-analysis", extension.jsonFileNaming.get())
         assertEquals(true, extension.enableMethodAnalysis.get())
         assertEquals(true, extension.enablePropertyAnalysis.get())
@@ -129,11 +129,10 @@ class PragmaDddAnalyzerPluginTest {
         
         // Then
         println("Actual options: ${options.map { "${it.key}=${it.value}" }}")
-        assertEquals(8, options.size)
+        assertEquals(7, options.size)
         
         val optionsMap = options.associate { it.key to it.value }
         assertTrue(optionsMap["outputDirectory"]!!.endsWith("custom${File.separator}output${File.separator}main"))
-        assertEquals("false", optionsMap["isTestCompilation"])
         assertEquals("custom-analysis", optionsMap["jsonFileNaming"])
         assertEquals("false", optionsMap["enableMethodAnalysis"])
         assertEquals("false", optionsMap["enablePropertyAnalysis"])
@@ -148,7 +147,7 @@ class PragmaDddAnalyzerPluginTest {
         plugin.apply(project)
         
         val compilation = mock<KotlinCompilation<*>>()
-        whenever(compilation.name).thenReturn("test")
+        whenever(compilation.name).thenReturn("main")
         whenever(compilation.target).thenReturn(mock())
         whenever(compilation.target.project).thenReturn(project)
         
@@ -158,28 +157,10 @@ class PragmaDddAnalyzerPluginTest {
         
         // Then
         val optionsMap = options.associate { it.key to it.value }
-        assertEquals("true", optionsMap["isTestCompilation"])
+        // isTestCompilation option has been removed since we only process main compilations
     }
     
-    @Test
-    fun `applyToCompilation should skip test compilation when includeTestSources is false`() {
-        // Given
-        plugin.apply(project)
-        val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        extension.includeTestSources.set(false)
-        
-        val compilation = mock<KotlinCompilation<*>>()
-        whenever(compilation.name).thenReturn("test")
-        whenever(compilation.target).thenReturn(mock())
-        whenever(compilation.target.project).thenReturn(project)
-        
-        // When
-        val optionsProvider: Provider<List<SubpluginOption>> = plugin.applyToCompilation(compilation)
-        val options = optionsProvider.get()
-        
-        // Then
-        assertTrue(options.isEmpty())
-    }
+    // Test removed - includeTestSources functionality no longer exists
     
     @Test
     fun `applyToCompilation should handle absolute output directory path`() {

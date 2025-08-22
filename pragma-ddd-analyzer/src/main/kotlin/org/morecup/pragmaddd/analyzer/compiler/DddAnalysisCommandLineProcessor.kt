@@ -10,11 +10,20 @@ import org.jetbrains.kotlin.config.CompilerConfigurationKey
 @OptIn(ExperimentalCompilerApi::class)
 class DddAnalysisCommandLineProcessor : CommandLineProcessor {
     
+    // Override the deprecated method to delegate to the new one
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun processOption(
+        option: CliOption,
+        value: String,
+        configuration: CompilerConfiguration
+    ) {
+        processOption(option as AbstractCliOption, value, configuration)
+    }
+    
     companion object {
         const val PLUGIN_ID = "org.morecup.pragmaddd.analyzer"
         
         val OUTPUT_DIRECTORY_KEY = CompilerConfigurationKey<String>("output.directory")
-        val IS_TEST_COMPILATION_KEY = CompilerConfigurationKey<Boolean>("is.test.compilation")
         val JSON_FILE_NAMING_KEY = CompilerConfigurationKey<String>("json.file.naming")
         val ENABLE_METHOD_ANALYSIS_KEY = CompilerConfigurationKey<Boolean>("enable.method.analysis")
         val ENABLE_PROPERTY_ANALYSIS_KEY = CompilerConfigurationKey<Boolean>("enable.property.analysis")
@@ -23,7 +32,6 @@ class DddAnalysisCommandLineProcessor : CommandLineProcessor {
         val FAIL_ON_ANALYSIS_ERRORS_KEY = CompilerConfigurationKey<Boolean>("fail.on.analysis.errors")
         
         const val OUTPUT_DIRECTORY_OPTION = "outputDirectory"
-        const val IS_TEST_COMPILATION_OPTION = "isTestCompilation"
         const val JSON_FILE_NAMING_OPTION = "jsonFileNaming"
         const val ENABLE_METHOD_ANALYSIS_OPTION = "enableMethodAnalysis"
         const val ENABLE_PROPERTY_ANALYSIS_OPTION = "enablePropertyAnalysis"
@@ -39,12 +47,6 @@ class DddAnalysisCommandLineProcessor : CommandLineProcessor {
             optionName = OUTPUT_DIRECTORY_OPTION,
             valueDescription = "path",
             description = "Output directory for generated JSON files",
-            required = false
-        ),
-        CliOption(
-            optionName = IS_TEST_COMPILATION_OPTION,
-            valueDescription = "true|false",
-            description = "Whether this is a test compilation",
             required = false
         ),
         CliOption(
@@ -90,14 +92,9 @@ class DddAnalysisCommandLineProcessor : CommandLineProcessor {
         value: String,
         configuration: CompilerConfiguration
     ) {
-        println("DDD Analyzer: Command line processor called with option: ${option.optionName} = $value")
-        System.err.println("DDD Analyzer: Command line processor called with option: ${option.optionName} = $value")
         when (option.optionName) {
             OUTPUT_DIRECTORY_OPTION -> {
                 configuration.put(OUTPUT_DIRECTORY_KEY, value)
-            }
-            IS_TEST_COMPILATION_OPTION -> {
-                configuration.put(IS_TEST_COMPILATION_KEY, value.toBoolean())
             }
             JSON_FILE_NAMING_OPTION -> {
                 configuration.put(JSON_FILE_NAMING_KEY, value)

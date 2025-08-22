@@ -239,11 +239,7 @@ class BytecodeAnalyzer {
         val metadata = analyzeClasspath(classpathEntries)
         
         if (metadata.isNotEmpty()) {
-            val json = if (sourceType == "test") {
-                jsonGenerator.generateTestSourcesJson(metadata)
-            } else {
-                jsonGenerator.generateMainSourcesJson(metadata)
-            }
+            val json = jsonGenerator.generateMainSourcesJson(metadata)
             
             jsonGenerator.writeToFile(json, outputPath)
             println("Generated DDD analysis JSON at: $outputPath")

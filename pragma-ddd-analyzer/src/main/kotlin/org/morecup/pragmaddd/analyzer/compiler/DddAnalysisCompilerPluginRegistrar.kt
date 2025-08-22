@@ -20,7 +20,6 @@ class DddAnalysisCompilerPluginRegistrar : CompilerPluginRegistrar() {
         
         // Extract configuration values
         val outputDirectory = configuration.get(DddAnalysisCommandLineProcessor.OUTPUT_DIRECTORY_KEY)
-        val isTestCompilation = configuration.get(DddAnalysisCommandLineProcessor.IS_TEST_COMPILATION_KEY) ?: false
         val jsonFileNaming = configuration.get(DddAnalysisCommandLineProcessor.JSON_FILE_NAMING_KEY) ?: "ddd-analysis"
         val enableMethodAnalysis = configuration.get(DddAnalysisCommandLineProcessor.ENABLE_METHOD_ANALYSIS_KEY) ?: true
         val enablePropertyAnalysis = configuration.get(DddAnalysisCommandLineProcessor.ENABLE_PROPERTY_ANALYSIS_KEY) ?: true
@@ -28,14 +27,13 @@ class DddAnalysisCompilerPluginRegistrar : CompilerPluginRegistrar() {
         val maxClassesPerCompilation = configuration.get(DddAnalysisCommandLineProcessor.MAX_CLASSES_PER_COMPILATION_KEY) ?: 1000
         val failOnAnalysisErrors = configuration.get(DddAnalysisCommandLineProcessor.FAIL_ON_ANALYSIS_ERRORS_KEY) ?: false
         
-        println("DDD Analyzer: Configuration - outputDirectory: $outputDirectory, isTestCompilation: $isTestCompilation, jsonFileNaming: $jsonFileNaming")
+        println("DDD Analyzer: Configuration - outputDirectory: $outputDirectory, jsonFileNaming: $jsonFileNaming")
         println("DDD Analyzer: Analysis features - method: $enableMethodAnalysis, property: $enablePropertyAnalysis, documentation: $enableDocumentationExtraction")
         println("DDD Analyzer: Performance settings - maxClasses: $maxClassesPerCompilation, failOnErrors: $failOnAnalysisErrors")
         
         // Create and register the IR generation extension
         val irExtension = DddAnalysisIrGenerationExtension(
             outputDirectory = outputDirectory,
-            isTestCompilation = isTestCompilation,
             jsonFileNaming = jsonFileNaming,
             enableMethodAnalysis = enableMethodAnalysis,
             enablePropertyAnalysis = enablePropertyAnalysis,

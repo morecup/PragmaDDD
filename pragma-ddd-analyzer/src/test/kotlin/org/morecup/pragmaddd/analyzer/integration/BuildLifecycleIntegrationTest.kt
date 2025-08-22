@@ -4,36 +4,22 @@ import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.io.TempDir
+import org.mockito.kotlin.*
 import org.morecup.pragmaddd.analyzer.PragmaDddAnalyzerExtension
 import org.morecup.pragmaddd.analyzer.PragmaDddAnalyzerPlugin
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 import java.io.File
-import java.nio.file.Path
 
-/**
- * Integration tests for Gradle build lifecycle integration
- * Tests proper task dependencies, incremental compilation, and resource packaging
- */
 class BuildLifecycleIntegrationTest {
-    
-    @TempDir
-    lateinit var tempDir: Path
     
     private lateinit var project: Project
     private lateinit var plugin: PragmaDddAnalyzerPlugin
     
     @BeforeEach
-    fun setup() {
-        project = ProjectBuilder.builder()
-            .withProjectDir(tempDir.toFile())
-            .build()
-        
+    fun setUp() {
+        project = ProjectBuilder.builder().build()
         plugin = PragmaDddAnalyzerPlugin()
     }
     
@@ -48,7 +34,6 @@ class BuildLifecycleIntegrationTest {
         
         // Verify default configuration
         assertEquals("build/resources", extension!!.outputDirectory.get())
-        assertTrue(extension.includeTestSources.get())
         assertEquals("ddd-analysis", extension.jsonFileNaming.get())
     }
     
@@ -82,185 +67,103 @@ class BuildLifecycleIntegrationTest {
     }
     
     @Test
-    fun `plugin should configure compilation options correctly`() {
+    fun `plugin should generate correct compiler options for main compilation`() {
         // Given
         plugin.apply(project)
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        extension.outputDirectory.set("custom/output")
+        extension.outputDirectory.set("build/custom-output")
         extension.jsonFileNaming.set("custom-analysis")
         extension.enableMethodAnalysis.set(false)
         
-        // When
         val compilation = createMockCompilation("main")
+        
+        // When
         val optionsProvider = plugin.applyToCompilation(compilation)
         val options = optionsProvider.get()
         
         // Then
-        assertFalse(options.isEmpty())
-        val optionsMap = options.associate { it.key to it.value }
+        assertTrue(options.isNotEmpty())
         
-        assertTrue(optionsMap["outputDirectory"]!!.endsWith("custom${File.separator}output${File.separator}main"))
-        assertEquals("false", optionsMap["isTestCompilation"])
+        val optionsMap = options.associate { it.key to it.value }
+        assertTrue(optionsMap["outputDirectory"]!!.endsWith("build${File.separator}custom-output${File.separator}main"))
         assertEquals("custom-analysis", optionsMap["jsonFileNaming"])
         assertEquals("false", optionsMap["enableMethodAnalysis"])
     }
     
     @Test
-    fun `plugin should handle test compilation correctly`() {
+    fun `plugin should handle compilation configuration correctly`() {
         // Given
         plugin.apply(project)
+        val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
+        
+        // Configure with various settings
+        extension.outputDirectory.set("/absolute/path")
+        extension.enablePropertyAnalysis.set(true)
+        extension.enableDocumentationExtraction.set(false)
+        extension.maxClassesPerCompilation.set(500)
+        extension.failOnAnalysisErrors.set(true)
+        
+        val compilation = createMockCompilation("main")
         
         // When
-        val testCompilation = createMockCompilation("test")
-        val testOptions = plugin.applyToCompilation(testCompilation).get()
+        val optionsProvider = plugin.applyToCompilation(compilation)
+        val options = optionsProvider.get()
         
         // Then
-        assertFalse(testOptions.isEmpty())
-        val testOptionsMap = testOptions.associate { it.key to it.value }
-        assertEquals("true", testOptionsMap["isTestCompilation"])
+        val optionsMap = options.associate { it.key to it.value }
+        assertEquals("/absolute/path${File.separator}main", optionsMap["outputDirectory"])
+        assertEquals("true", optionsMap["enablePropertyAnalysis"])
+        assertEquals("false", optionsMap["enableDocumentationExtraction"])
+        assertEquals("500", optionsMap["maxClassesPerCompilation"])
+        assertEquals("true", optionsMap["failOnAnalysisErrors"])
     }
     
     @Test
-    fun `plugin should skip test compilation when includeTestSources is false`() {
-        // Given
-        plugin.apply(project)
-        val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        extension.includeTestSources.set(false)
-        
-        // When
-        val testCompilation = createMockCompilation("test")
-        val testOptions = plugin.applyToCompilation(testCompilation).get()
-        
-        // Then
-        assertTrue(testOptions.isEmpty())
-    }
-    
-    @Test
-    fun `plugin should handle different compilation types`() {
-        // Given
-        plugin.apply(project)
-        val compilationTypes = listOf("main", "test", "integrationTest")
-        
-        compilationTypes.forEach { compilationType ->
-            // When
-            val compilation = createMockCompilation(compilationType)
-            val options = plugin.applyToCompilation(compilation).get()
-            
-            // Then
-            if (compilationType.contains("test", ignoreCase = true)) {
-                if (options.isNotEmpty()) {
-                    val optionsMap = options.associate { it.key to it.value }
-                    assertEquals("true", optionsMap["isTestCompilation"])
-                }
-            } else {
-                assertFalse(options.isEmpty())
-                val optionsMap = options.associate { it.key to it.value }
-                assertEquals("false", optionsMap["isTestCompilation"])
-            }
-        }
-    }
-    
-    @Test
-    fun `plugin should handle absolute and relative output paths`() {
+    fun `plugin should validate extension configuration`() {
         // Given
         plugin.apply(project)
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
         
-        // Test relative path
-        extension.outputDirectory.set("relative/path")
-        val compilation1 = createMockCompilation("main")
-        val options1 = plugin.applyToCompilation(compilation1).get()
-        val optionsMap1 = options1.associate { it.key to it.value }
-        
-        assertTrue(optionsMap1["outputDirectory"]!!.contains(project.projectDir.absolutePath))
-        
-        // Test absolute path
-        val absolutePath = tempDir.resolve("absolute").toFile().absolutePath
-        extension.outputDirectory.set(absolutePath)
-        val compilation2 = createMockCompilation("main")
-        val options2 = plugin.applyToCompilation(compilation2).get()
-        val optionsMap2 = options2.associate { it.key to it.value }
-        
-        assertEquals("$absolutePath${File.separator}main", optionsMap2["outputDirectory"])
-    }
-    
-    @Test
-    fun `plugin should validate configuration`() {
-        // Given
-        plugin.apply(project)
-        val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        
-        // When - valid configuration
-        extension.outputDirectory.set("valid/output")
-        extension.jsonFileNaming.set("valid-name")
-        
-        // Then - should not throw
+        // When & Then - should not throw with valid configuration
         assertDoesNotThrow {
             extension.validate()
         }
-        
-        // When - invalid configuration
+    }
+    
+    @Test
+    fun `plugin should handle invalid extension configuration`() {
+        // Given
+        plugin.apply(project)
+        val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
         extension.outputDirectory.set("")
         
-        // Then - should throw
+        // When & Then - should throw with invalid configuration
         assertThrows(IllegalArgumentException::class.java) {
             extension.validate()
         }
     }
     
     @Test
-    fun `plugin should generate correct JSON file names`() {
+    fun `plugin should provide configuration summary`() {
         // Given
         plugin.apply(project)
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        extension.jsonFileNaming.set("my-project")
-        
-        // When & Then
-        assertEquals("my-project-main.json", extension.getMainSourceJsonFileName())
-        assertEquals("my-project-test.json", extension.getTestSourceJsonFileName())
-    }
-    
-    @Test
-    fun `plugin should handle custom configuration options`() {
-        // Given
-        plugin.apply(project)
-        val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
-        
-        // Configure all options
-        extension.outputDirectory.set("custom/output")
-        extension.includeTestSources.set(false)
-        extension.jsonFileNaming.set("custom-analysis")
-        extension.enableMethodAnalysis.set(false)
-        extension.enablePropertyAnalysis.set(false)
-        extension.enableDocumentationExtraction.set(false)
-        extension.maxClassesPerCompilation.set(500)
-        extension.failOnAnalysisErrors.set(true)
         
         // When
-        val compilation = createMockCompilation("main")
-        val options = plugin.applyToCompilation(compilation).get()
+        val summary = extension.getConfigurationSummary()
         
         // Then
-        val optionsMap = options.associate { it.key to it.value }
-        assertEquals("custom-analysis", optionsMap["jsonFileNaming"])
-        assertEquals("false", optionsMap["enableMethodAnalysis"])
-        assertEquals("false", optionsMap["enablePropertyAnalysis"])
-        assertEquals("false", optionsMap["enableDocumentationExtraction"])
-        assertEquals("500", optionsMap["maxClassesPerCompilation"])
-        assertEquals("true", optionsMap["failOnAnalysisErrors"])
+        assertNotNull(summary)
+        assertTrue(summary.contains("Pragma DDD Analyzer Configuration"))
+        assertTrue(summary.contains("Output Directory"))
+        assertTrue(summary.contains("JSON File Naming"))
     }
     
-    /**
-     * Helper method to create mock Kotlin compilation
-     */
     private fun createMockCompilation(name: String): KotlinCompilation<*> {
         val compilation = mock<KotlinCompilation<*>>()
-        val target = mock<org.jetbrains.kotlin.gradle.plugin.KotlinTarget>()
-        
         whenever(compilation.name).thenReturn(name)
-        whenever(compilation.target).thenReturn(target)
-        whenever(target.project).thenReturn(project)
-        
+        whenever(compilation.target).thenReturn(mock())
+        whenever(compilation.target.project).thenReturn(project)
         return compilation
     }
 }

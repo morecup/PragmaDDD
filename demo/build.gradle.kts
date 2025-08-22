@@ -17,5 +17,6 @@ dependencies {
 pragmaDddAnalyzer {
     // Use default output directory (build/resources/main)
     jsonFileNaming.set("demo-ddd-analysis")
+
 }
 

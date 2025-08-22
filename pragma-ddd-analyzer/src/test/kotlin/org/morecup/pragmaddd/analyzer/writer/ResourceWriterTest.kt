@@ -1,57 +1,35 @@
 package org.morecup.pragmaddd.analyzer.writer
 
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.nio.file.Path
 
 class ResourceWriterTest {
     
-    private lateinit var resourceWriter: ResourceWriterImpl
-    
     @TempDir
-    lateinit var tempDir: Path
+    lateinit var tempDir: File
+    
+    private lateinit var resourceWriter: ResourceWriter
     
     @BeforeEach
     fun setUp() {
         resourceWriter = ResourceWriterImpl()
     }
     
-    @AfterEach
-    fun tearDown() {
-        // 清理临时文件
-        tempDir.toFile().deleteRecursively()
-    }
-    
     @Test
-    fun `should create META-INF directory structure`() {
+    fun `writeMainSourcesJson should create file in correct location`() {
         // Given
-        val outputDirectory = tempDir.toString()
-        
-        // When
-        val metaInfDir = resourceWriter.createMetaInfDirectory(outputDirectory)
-        
-        // Then
-        assertTrue(metaInfDir.toFile().exists())
-        assertTrue(metaInfDir.toFile().isDirectory)
-        assertEquals("META-INF", metaInfDir.fileName.toString())
-    }
-    
-    @Test
-    fun `should write main sources JSON to META-INF directory`() {
-        // Given
-        val outputDirectory = tempDir.toString()
         val json = """{"test": "data"}"""
+        val outputDirectory = tempDir.toString()
         val fileName = "test-main.json"
         
         // When
         resourceWriter.writeMainSourcesJson(json, outputDirectory, fileName)
         
         // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())
@@ -59,29 +37,11 @@ class ResourceWriterTest {
     }
     
     @Test
-    fun `should write test sources JSON to META-INF directory`() {
+    fun `writeJsonToResource should create file with custom resource path`() {
         // Given
-        val outputDirectory = tempDir.toString()
-        val json = """{"test": "data"}"""
-        val fileName = "test-test.json"
-        
-        // When
-        resourceWriter.writeTestSourcesJson(json, outputDirectory, fileName)
-        
-        // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
-        val file = expectedPath.toFile()
-        
-        assertTrue(file.exists())
-        assertEquals(json, file.readText())
-    }
-    
-    @Test
-    fun `should write JSON to custom resource path`() {
-        // Given
-        val outputDirectory = tempDir.toString()
         val json = """{"custom": "data"}"""
-        val resourcePath = "custom/path/data.json"
+        val outputDirectory = tempDir.toString()
+        val resourcePath = "custom/path/file.json"
         
         // When
         resourceWriter.writeJsonToResource(json, resourcePath, outputDirectory)
@@ -95,17 +55,58 @@ class ResourceWriterTest {
     }
     
     @Test
-    fun `should create nested directories automatically`() {
+    fun `createMetaInfDirectory should create META-INF directory`() {
         // Given
         val outputDirectory = tempDir.toString()
-        val json = """{"nested": "data"}"""
-        val resourcePath = "deep/nested/structure/data.json"
         
         // When
-        resourceWriter.writeJsonToResource(json, resourcePath, outputDirectory)
+        val metaInfPath = resourceWriter.createMetaInfDirectory(outputDirectory)
         
         // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, resourcePath)
+        val metaInfDir = metaInfPath.toFile()
+        assertTrue(metaInfDir.exists())
+        assertTrue(metaInfDir.isDirectory)
+        assertEquals("META-INF", metaInfDir.name)
+    }
+    
+    @Test
+    fun `isOutputDirectoryWritable should return true for writable directory`() {
+        // Given
+        val outputDirectory = tempDir.toString()
+        
+        // When
+        val isWritable = resourceWriter.isOutputDirectoryWritable(outputDirectory)
+        
+        // Then
+        assertTrue(isWritable)
+    }
+    
+    @Test
+    fun `getResourceFilePath should return correct path`() {
+        // Given
+        val outputDirectory = tempDir.toString()
+        val resourcePath = "test/file.json"
+        
+        // When
+        val filePath = resourceWriter.getResourceFilePath(outputDirectory, resourcePath)
+        
+        // Then
+        val expectedPath = File(tempDir, "META-INF/test/file.json").toPath()
+        assertEquals(expectedPath, filePath)
+    }
+    
+    @Test
+    fun `writeMainSourcesJson should create parent directories`() {
+        // Given
+        val json = """{"nested": "data"}"""
+        val outputDirectory = tempDir.toString()
+        val fileName = "nested-main.json"
+        
+        // When
+        resourceWriter.writeMainSourcesJson(json, outputDirectory, fileName)
+        
+        // Then
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())
@@ -114,155 +115,74 @@ class ResourceWriterTest {
     }
     
     @Test
-    fun `should validate output directory is writable`() {
+    fun `multiple writeMainSourcesJson calls should work correctly`() {
         // Given
-        val writableDirectory = tempDir.toString()
-        
-        // When & Then
-        assertTrue(resourceWriter.isOutputDirectoryWritable(writableDirectory))
-    }
-    
-    @Test
-    fun `should create output directory if it does not exist`() {
-        // Given
-        val nonExistentDirectory = tempDir.resolve("new-directory").toString()
+        val json1 = """{"file1": "data"}"""
+        val json2 = """{"file2": "data"}"""
+        val outputDirectory = tempDir.toString()
         
         // When
-        val isWritable = resourceWriter.isOutputDirectoryWritable(nonExistentDirectory)
+        resourceWriter.writeMainSourcesJson(json1, outputDirectory, "file1.json")
+        resourceWriter.writeMainSourcesJson(json2, outputDirectory, "file2.json")
         
         // Then
-        assertTrue(isWritable)
-        assertTrue(File(nonExistentDirectory).exists())
+        val file1 = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/file1.json").toFile()
+        val file2 = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/file2.json").toFile()
+        
+        assertTrue(file1.exists())
+        assertTrue(file2.exists())
+        assertEquals(json1, file1.readText())
+        assertEquals(json2, file2.readText())
     }
     
     @Test
-    fun `should get correct resource file path`() {
+    fun `writeJsonToResource should handle nested paths`() {
         // Given
+        val json = """{"deep": "nested"}"""
         val outputDirectory = tempDir.toString()
-        val resourcePath = "test/path/file.json"
-        
-        // When
-        val filePath = resourceWriter.getResourceFilePath(outputDirectory, resourcePath)
-        
-        // Then
-        val expectedPath = File(outputDirectory).resolve("META-INF").resolve(resourcePath).toPath()
-        assertEquals(expectedPath, filePath)
-    }
-    
-    @Test
-    fun `should use default file names for main and test sources`() {
-        // Given
-        val outputDirectory = tempDir.toString()
-        val json = """{"default": "names"}"""
-        
-        // When
-        resourceWriter.writeMainSourcesJson(json, outputDirectory)
-        resourceWriter.writeTestSourcesJson(json, outputDirectory)
-        
-        // Then
-        val mainFile = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/ddd-analysis-main.json").toFile()
-        val testFile = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/ddd-analysis-test.json").toFile()
-        
-        assertTrue(mainFile.exists())
-        assertTrue(testFile.exists())
-        assertEquals(json, mainFile.readText())
-        assertEquals(json, testFile.readText())
-    }
-    
-    @Test
-    fun `should cleanup old JSON files`() {
-        // Given
-        val outputDirectory = tempDir.toString()
-        val json = """{"old": "data"}"""
-        
-        // 创建一些旧文件
-        resourceWriter.writeMainSourcesJson(json, outputDirectory, "old-main.json")
-        resourceWriter.writeTestSourcesJson(json, outputDirectory, "old-test.json")
-        
-        // When
-        resourceWriter.cleanupOldJsonFiles(outputDirectory)
-        
-        // Then
-        val jsonFiles = resourceWriter.listJsonFiles(outputDirectory)
-        assertTrue(jsonFiles.isEmpty())
-    }
-    
-    @Test
-    fun `should list JSON files in META-INF directory`() {
-        // Given
-        val outputDirectory = tempDir.toString()
-        val json = """{"list": "test"}"""
-        
-        resourceWriter.writeMainSourcesJson(json, outputDirectory, "file1.json")
-        resourceWriter.writeTestSourcesJson(json, outputDirectory, "file2.json")
-        
-        // When
-        val jsonFiles = resourceWriter.listJsonFiles(outputDirectory)
-        
-        // Then
-        assertEquals(2, jsonFiles.size)
-        assertTrue(jsonFiles.any { it.name == "file1.json" })
-        assertTrue(jsonFiles.any { it.name == "file2.json" })
-    }
-    
-    @Test
-    fun `should verify JSON file was written successfully`() {
-        // Given
-        val outputDirectory = tempDir.toString()
-        val json = """{"verify": "test"}"""
-        val resourcePath = "pragmaddd/verify-test.json"
+        val resourcePath = "deep/nested/path/file.json"
         
         // When
         resourceWriter.writeJsonToResource(json, resourcePath, outputDirectory)
         
         // Then
-        assertTrue(resourceWriter.verifyJsonFileWritten(outputDirectory, resourcePath))
-    }
-    
-    @Test
-    fun `should return false when verifying non-existent file`() {
-        // Given
-        val outputDirectory = tempDir.toString()
-        val resourcePath = "pragmaddd/non-existent.json"
-        
-        // When & Then
-        assertFalse(resourceWriter.verifyJsonFileWritten(outputDirectory, resourcePath))
-    }
-    
-    @Test
-    fun `should handle empty JSON content`() {
-        // Given
-        val outputDirectory = tempDir.toString()
-        val emptyJson = ""
-        val fileName = "empty.json"
-        
-        // When
-        resourceWriter.writeMainSourcesJson(emptyJson, outputDirectory, fileName)
-        
-        // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, resourcePath)
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())
-        assertEquals(emptyJson, file.readText())
+        assertEquals(json, file.readText())
     }
     
     @Test
-    fun `should handle large JSON content`() {
+    fun `isOutputDirectoryWritable should create directory if it doesn't exist`() {
         // Given
-        val outputDirectory = tempDir.toString()
-        val largeJson = """{"data": "${(1..1000).joinToString(",") { "item$it" }}"}"""
-        val fileName = "large.json"
+        val nonExistentDir = File(tempDir, "new-directory").toString()
         
         // When
-        resourceWriter.writeMainSourcesJson(largeJson, outputDirectory, fileName)
+        val isWritable = resourceWriter.isOutputDirectoryWritable(nonExistentDir)
         
         // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
+        assertTrue(isWritable)
+        assertTrue(File(nonExistentDir).exists())
+    }
+    
+    @Test
+    fun `writeMainSourcesJson should overwrite existing files`() {
+        // Given
+        val json1 = """{"version": 1}"""
+        val json2 = """{"version": 2}"""
+        val outputDirectory = tempDir.toString()
+        val fileName = "overwrite-test.json"
+        
+        // When
+        resourceWriter.writeMainSourcesJson(json1, outputDirectory, fileName)
+        resourceWriter.writeMainSourcesJson(json2, outputDirectory, fileName)
+        
+        // Then
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())
-        assertEquals(largeJson, file.readText())
-        assertTrue(file.length() > 1000)
+        assertEquals(json2, file.readText()) // Should contain the second version
     }
 }

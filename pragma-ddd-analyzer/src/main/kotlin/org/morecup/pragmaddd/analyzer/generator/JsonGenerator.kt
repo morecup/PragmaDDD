@@ -21,11 +21,6 @@ interface JsonGenerator {
     fun generateMainSourcesJson(metadata: List<ClassMetadata>): String
     
     /**
-     * 生成测试源码的 JSON
-     */
-    fun generateTestSourcesJson(metadata: List<ClassMetadata>): String
-    
-    /**
      * 将 JSON 写入文件
      */
     fun writeToFile(json: String, outputPath: String)
@@ -40,15 +35,6 @@ interface JsonGenerator {
     )
     
     /**
-     * 生成并写入测试源码 JSON 文件
-     */
-    fun generateAndWriteTestSourcesJson(
-        metadata: List<ClassMetadata>,
-        outputDirectory: String,
-        fileName: String = "ddd-analysis-test.json"
-    )
-    
-    /**
      * 验证 JSON 格式
      */
     fun validateJson(json: String): Boolean
@@ -57,11 +43,6 @@ interface JsonGenerator {
      * 解析主源码 JSON 为 ClassMetadata 列表
      */
     fun parseMainSourcesJson(json: String): List<ClassMetadata>
-    
-    /**
-     * 解析测试源码 JSON 为 ClassMetadata 列表
-     */
-    fun parseTestSourcesJson(json: String): List<ClassMetadata>
 }
 
 /**
@@ -122,28 +103,6 @@ class JsonGeneratorImpl(
     }
     
     /**
-     * 生成测试源码的 JSON
-     */
-    override fun generateTestSourcesJson(metadata: List<ClassMetadata>): String {
-        return try {
-            val result = AnalysisResult(
-                generatedAt = getCurrentTimestamp(),
-                sourceType = "test",
-                classes = metadata
-            )
-            objectMapper.writeValueAsString(result)
-        } catch (e: Exception) {
-            errorReporter?.reportError(
-                AnalysisError.JsonGenerationError(
-                    message = "Failed to generate test sources JSON: ${e.message}",
-                    cause = e
-                )
-            )
-            throw e
-        }
-    }
-    
-    /**
      * 将 JSON 写入文件
      */
     override fun writeToFile(json: String, outputPath: String) {
@@ -188,33 +147,6 @@ class JsonGeneratorImpl(
                 AnalysisError.OutputGenerationError(
                     outputPath = File(outputDirectory, fileName).absolutePath,
                     message = "Failed to generate and write main sources JSON: ${e.message}",
-                    cause = e
-                )
-            )
-            // Re-throw to prevent silent failures
-            throw e
-        }
-    }
-    
-    /**
-     * 生成并写入测试源码 JSON 文件
-     */
-    override fun generateAndWriteTestSourcesJson(
-        metadata: List<ClassMetadata>,
-        outputDirectory: String,
-        fileName: String
-    ) {
-        try {
-            if (metadata.isNotEmpty()) {
-                val json = generateTestSourcesJson(metadata)
-                val outputPath = File(outputDirectory, fileName).absolutePath
-                writeToFile(json, outputPath)
-            }
-        } catch (e: Exception) {
-            errorReporter?.reportError(
-                AnalysisError.OutputGenerationError(
-                    outputPath = File(outputDirectory, fileName).absolutePath,
-                    message = "Failed to generate and write test sources JSON: ${e.message}",
                     cause = e
                 )
             )
@@ -279,24 +211,6 @@ class JsonGeneratorImpl(
     }
     
     /**
-     * 解析测试源码 JSON 为 ClassMetadata 列表
-     */
-    override fun parseTestSourcesJson(json: String): List<ClassMetadata> {
-        return try {
-            val result = objectMapper.readValue(json, AnalysisResult::class.java)
-            result.classes
-        } catch (e: Exception) {
-            errorReporter?.reportError(
-                AnalysisError.JsonGenerationError(
-                    message = "Failed to parse test sources JSON: ${e.message}",
-                    cause = e
-                )
-            )
-            emptyList()
-        }
-    }
-    
-    /**
      * 生成 JSON Schema 描述
      */
     fun generateJsonSchema(): String {
@@ -312,7 +226,7 @@ class JsonGeneratorImpl(
                 ),
                 "sourceType" to mapOf(
                     "type" to "string",
-                    "enum" to listOf("main", "test"),
+                    "enum" to listOf("main"),
                     "description" to "Type of source code analyzed"
                 ),
                 "classes" to mapOf(

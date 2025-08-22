@@ -76,8 +76,8 @@ class TestSourceEndToEndTest {
         resourceWriter.writeTestSourcesJson(testJson, outputDir.absolutePath, "test-analysis-test.json")
         
         // Then - verify files are created
-        val mainJsonFile = File(outputDir, "META-INF/ddd-analysis/test-analysis-main.json")
-        val testJsonFile = File(outputDir, "META-INF/ddd-analysis/test-analysis-test.json")
+        val mainJsonFile = File(outputDir, "META-INF/pragmaddd/test-analysis-main.json")
+        val testJsonFile = File(outputDir, "META-INF/pragmaddd/test-analysis-test.json")
         
         assertTrue(mainJsonFile.exists(), "Main sources JSON file should exist")
         assertTrue(testJsonFile.exists(), "Test sources JSON file should exist")
@@ -131,7 +131,7 @@ class TestSourceEndToEndTest {
         resourceWriter.writeTestSourcesJson(testJson, outputDir.absolutePath, "ddd-analysis-test.json")
         
         // Then
-        val testJsonFile = File(outputDir, "META-INF/ddd-analysis/ddd-analysis-test.json")
+        val testJsonFile = File(outputDir, "META-INF/pragmaddd/ddd-analysis-test.json")
         assertTrue(testJsonFile.exists())
         
         val jsonContent = objectMapper.readTree(testJsonFile)
@@ -199,7 +199,7 @@ class TestSourceEndToEndTest {
         resourceWriter.writeTestSourcesJson(testJson, outputDir.absolutePath, "verification-test.json")
         
         // Then
-        assertTrue(resourceWriter.verifyJsonFileWritten(outputDir.absolutePath, "ddd-analysis/verification-test.json"))
+        assertTrue(resourceWriter.verifyJsonFileWritten(outputDir.absolutePath, "pragmaddd/verification-test.json"))
         
         val jsonFiles = resourceWriter.listJsonFiles(outputDir.absolutePath)
         assertTrue(jsonFiles.any { it.name == "verification-test.json" })

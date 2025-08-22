@@ -47,7 +47,7 @@ class BuildLifecycleIntegrationTest {
         assertNotNull(extension)
         
         // Verify default configuration
-        assertEquals("build/resources/main", extension!!.outputDirectory.get())
+        assertEquals("build/resources", extension!!.outputDirectory.get())
         assertTrue(extension.includeTestSources.get())
         assertEquals("ddd-analysis", extension.jsonFileNaming.get())
     }
@@ -99,7 +99,7 @@ class BuildLifecycleIntegrationTest {
         assertFalse(options.isEmpty())
         val optionsMap = options.associate { it.key to it.value }
         
-        assertTrue(optionsMap["outputDirectory"]!!.endsWith("custom${File.separator}output"))
+        assertTrue(optionsMap["outputDirectory"]!!.endsWith("custom${File.separator}output${File.separator}main"))
         assertEquals("false", optionsMap["isTestCompilation"])
         assertEquals("custom-analysis", optionsMap["jsonFileNaming"])
         assertEquals("false", optionsMap["enableMethodAnalysis"])
@@ -181,7 +181,7 @@ class BuildLifecycleIntegrationTest {
         val options2 = plugin.applyToCompilation(compilation2).get()
         val optionsMap2 = options2.associate { it.key to it.value }
         
-        assertEquals(absolutePath, optionsMap2["outputDirectory"])
+        assertEquals("$absolutePath${File.separator}main", optionsMap2["outputDirectory"])
     }
     
     @Test

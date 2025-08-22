@@ -51,7 +51,7 @@ class ResourceWriterTest {
         resourceWriter.writeMainSourcesJson(json, outputDirectory, fileName)
         
         // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())
@@ -69,7 +69,7 @@ class ResourceWriterTest {
         resourceWriter.writeTestSourcesJson(json, outputDirectory, fileName)
         
         // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())
@@ -160,8 +160,8 @@ class ResourceWriterTest {
         resourceWriter.writeTestSourcesJson(json, outputDirectory)
         
         // Then
-        val mainFile = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/ddd-analysis-main.json").toFile()
-        val testFile = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/ddd-analysis-test.json").toFile()
+        val mainFile = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/ddd-analysis-main.json").toFile()
+        val testFile = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/ddd-analysis-test.json").toFile()
         
         assertTrue(mainFile.exists())
         assertTrue(testFile.exists())
@@ -210,7 +210,7 @@ class ResourceWriterTest {
         // Given
         val outputDirectory = tempDir.toString()
         val json = """{"verify": "test"}"""
-        val resourcePath = "ddd-analysis/verify-test.json"
+        val resourcePath = "pragmaddd/verify-test.json"
         
         // When
         resourceWriter.writeJsonToResource(json, resourcePath, outputDirectory)
@@ -223,7 +223,7 @@ class ResourceWriterTest {
     fun `should return false when verifying non-existent file`() {
         // Given
         val outputDirectory = tempDir.toString()
-        val resourcePath = "ddd-analysis/non-existent.json"
+        val resourcePath = "pragmaddd/non-existent.json"
         
         // When & Then
         assertFalse(resourceWriter.verifyJsonFileWritten(outputDirectory, resourcePath))
@@ -240,7 +240,7 @@ class ResourceWriterTest {
         resourceWriter.writeMainSourcesJson(emptyJson, outputDirectory, fileName)
         
         // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())
@@ -258,7 +258,7 @@ class ResourceWriterTest {
         resourceWriter.writeMainSourcesJson(largeJson, outputDirectory, fileName)
         
         // Then
-        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "ddd-analysis/$fileName")
+        val expectedPath = resourceWriter.getResourceFilePath(outputDirectory, "pragmaddd/$fileName")
         val file = expectedPath.toFile()
         
         assertTrue(file.exists())

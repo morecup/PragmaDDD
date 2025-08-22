@@ -30,7 +30,7 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
         )
         
         // Set default values - use resources directory for JAR packaging
-        extension.outputDirectory.convention("build/resources/main")
+        extension.outputDirectory.convention("build/resources")
         extension.includeTestSources.convention(true)
         extension.jsonFileNaming.convention("ddd-analysis")
         extension.enableMethodAnalysis.convention(true)
@@ -215,19 +215,22 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
         return project.provider {
             val options = mutableListOf<SubpluginOption>()
             
-            // Pass output directory to compiler plugin
-            val outputDir = extension.outputDirectory.get()
-            val resolvedOutputDir = if (outputDir.startsWith("/") || outputDir.contains(":")) {
-                // Absolute path
-                outputDir
-            } else {
-                // Relative path - resolve relative to project directory
-                project.layout.projectDirectory.dir(outputDir).asFile.absolutePath
-            }
-            options.add(SubpluginOption(key = "outputDirectory", value = resolvedOutputDir))
-            
             // Determine if this is a test compilation
             val isTestCompilation = kotlinCompilation.name.contains("test", ignoreCase = true)
+            
+            // Pass output directory to compiler plugin - different for main and test
+            val baseOutputDir = extension.outputDirectory.get()
+            val sourceSetDir = if (isTestCompilation) "test" else "main"
+            val fullOutputDir = "$baseOutputDir/$sourceSetDir"
+            
+            val resolvedOutputDir = if (baseOutputDir.startsWith("/") || (baseOutputDir.length > 1 && baseOutputDir[1] == ':')) {
+                // Absolute path - append source set directory directly using File.separator
+                "$baseOutputDir${File.separator}$sourceSetDir"
+            } else {
+                // Relative path - resolve relative to project directory
+                project.layout.projectDirectory.dir(fullOutputDir).asFile.absolutePath
+            }
+            options.add(SubpluginOption(key = "outputDirectory", value = resolvedOutputDir))
             
             // Skip test compilation if includeTestSources is false
             if (isTestCompilation && !extension.includeTestSources.get()) {

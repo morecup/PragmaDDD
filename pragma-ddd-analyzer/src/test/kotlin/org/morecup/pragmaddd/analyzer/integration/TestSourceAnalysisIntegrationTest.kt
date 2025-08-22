@@ -164,8 +164,8 @@ class TestSourceAnalysisIntegrationTest {
         resourceWriter.writeTestSourcesJson(testJson, outputDir.absolutePath, testFileName)
         
         // Then
-        val expectedFile = File(outputDir, "META-INF/ddd-analysis/$testFileName")
-        assertTrue(expectedFile.exists(), "Test JSON file should be written to META-INF/ddd-analysis/")
+        val expectedFile = File(outputDir, "META-INF/pragmaddd/$testFileName")
+        assertTrue(expectedFile.exists(), "Test JSON file should be written to META-INF/pragmaddd/")
         assertEquals(testJson, expectedFile.readText())
     }
     

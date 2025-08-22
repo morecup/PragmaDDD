@@ -81,7 +81,7 @@ class ResourceWriterImpl : ResourceWriter {
     
     companion object {
         private const val META_INF_DIR = "META-INF"
-        private const val DDD_ANALYSIS_DIR = "ddd-analysis"
+        private const val DDD_ANALYSIS_DIR = "pragmaddd"
     }
     
     /**

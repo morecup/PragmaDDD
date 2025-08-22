@@ -39,7 +39,7 @@ class PragmaDddAnalyzerPluginTest {
         assertNotNull(extension)
         
         // Verify default values
-        assertEquals("build/resources/main", extension.outputDirectory.get())
+        assertEquals("build/resources", extension.outputDirectory.get())
         assertEquals(true, extension.includeTestSources.get())
         assertEquals("ddd-analysis", extension.jsonFileNaming.get())
         assertEquals(true, extension.enableMethodAnalysis.get())
@@ -132,7 +132,7 @@ class PragmaDddAnalyzerPluginTest {
         assertEquals(8, options.size)
         
         val optionsMap = options.associate { it.key to it.value }
-        assertTrue(optionsMap["outputDirectory"]!!.endsWith("custom${File.separator}output"))
+        assertTrue(optionsMap["outputDirectory"]!!.endsWith("custom${File.separator}output${File.separator}main"))
         assertEquals("false", optionsMap["isTestCompilation"])
         assertEquals("custom-analysis", optionsMap["jsonFileNaming"])
         assertEquals("false", optionsMap["enableMethodAnalysis"])
@@ -199,7 +199,7 @@ class PragmaDddAnalyzerPluginTest {
         
         // Then
         val optionsMap = options.associate { it.key to it.value }
-        assertEquals("/absolute/path/to/output", optionsMap["outputDirectory"])
+        assertEquals("/absolute/path/to/output${File.separator}main", optionsMap["outputDirectory"])
     }
     
     @Test
@@ -220,7 +220,7 @@ class PragmaDddAnalyzerPluginTest {
         
         // Then
         val optionsMap = options.associate { it.key to it.value }
-        assertTrue(optionsMap["outputDirectory"]!!.endsWith("relative${File.separator}path"))
+        assertTrue(optionsMap["outputDirectory"]!!.endsWith("relative${File.separator}path${File.separator}main"))
         assertTrue(optionsMap["outputDirectory"]!!.contains(project.projectDir.absolutePath))
     }
 }

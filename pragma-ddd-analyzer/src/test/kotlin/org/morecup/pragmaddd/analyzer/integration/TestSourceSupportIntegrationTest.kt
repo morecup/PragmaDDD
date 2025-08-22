@@ -203,8 +203,8 @@ class TestSourceSupportIntegrationTest {
         resourceWriter.writeTestSourcesJson(testJson, outputDir.absolutePath, "test-analysis-test.json")
         
         // Then
-        val expectedFile = File(outputDir, "META-INF/ddd-analysis/test-analysis-test.json")
-        assertTrue(expectedFile.exists(), "Test JSON file should be written to META-INF/ddd-analysis/")
+        val expectedFile = File(outputDir, "META-INF/pragmaddd/test-analysis-test.json")
+        assertTrue(expectedFile.exists(), "Test JSON file should be written to META-INF/pragmaddd/")
         
         val writtenContent = expectedFile.readText()
         val writtenJsonTree = objectMapper.readTree(writtenContent)
@@ -290,8 +290,8 @@ class TestSourceSupportIntegrationTest {
         resourceWriter.writeTestSourcesJson(testJson, outputDir.absolutePath, "complete-test-test.json")
         
         // Then
-        val mainJsonFile = File(outputDir, "META-INF/ddd-analysis/complete-test-main.json")
-        val testJsonFile = File(outputDir, "META-INF/ddd-analysis/complete-test-test.json")
+        val mainJsonFile = File(outputDir, "META-INF/pragmaddd/complete-test-main.json")
+        val testJsonFile = File(outputDir, "META-INF/pragmaddd/complete-test-test.json")
         
         assertTrue(mainJsonFile.exists())
         assertTrue(testJsonFile.exists())
@@ -327,8 +327,8 @@ class TestSourceSupportIntegrationTest {
         resourceWriter.writeTestSourcesJson(testJson, outputDir.absolutePath, "verify-test.json")
         
         // Then
-        assertTrue(resourceWriter.verifyJsonFileWritten(outputDir.absolutePath, "ddd-analysis/verify-main.json"))
-        assertTrue(resourceWriter.verifyJsonFileWritten(outputDir.absolutePath, "ddd-analysis/verify-test.json"))
+        assertTrue(resourceWriter.verifyJsonFileWritten(outputDir.absolutePath, "pragmaddd/verify-main.json"))
+        assertTrue(resourceWriter.verifyJsonFileWritten(outputDir.absolutePath, "pragmaddd/verify-test.json"))
         
         val jsonFiles = resourceWriter.listJsonFiles(outputDir.absolutePath)
         assertTrue(jsonFiles.any { it.name == "verify-main.json" })

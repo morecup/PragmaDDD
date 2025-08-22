@@ -231,4 +231,4 @@
   - Perform final integration testing with demo project
   - _Requirements: 7.3, 7.5_
 
-- [ ] 17. 你怎么把test下的类的json生成到main里了，而main下的类根本没生成
+- [x] 17. 调整代码，将json生成到build/resources/main/META-INF/pragmaddd下，test生成到build/resources/test/META-INF/pragmaddd

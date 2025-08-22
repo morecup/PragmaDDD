@@ -19,7 +19,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should pass with valid configuration`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             jsonFileNaming = "ddd-analysis"
         )
         
@@ -61,7 +61,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should throw exception when json file naming is null`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             jsonFileNaming = null
         )
         
@@ -76,7 +76,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should throw exception when json file naming is blank`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             jsonFileNaming = ""
         )
         
@@ -94,7 +94,7 @@ class PragmaDddAnalyzerExtensionTest {
         invalidChars.forEach { invalidChar ->
             // Given
             val extension = createMockExtension(
-                outputDirectory = "build/resources/main",
+                outputDirectory = "build/resources",
                 jsonFileNaming = "ddd${invalidChar}analysis"
             )
             
@@ -123,7 +123,7 @@ class PragmaDddAnalyzerExtensionTest {
         validNames.forEach { validName ->
             // Given
             val extension = createMockExtension(
-                outputDirectory = "build/resources/main",
+                outputDirectory = "build/resources",
                 jsonFileNaming = validName
             )
             
@@ -137,7 +137,7 @@ class PragmaDddAnalyzerExtensionTest {
         listOf(0, -1, -100).forEach { invalidValue ->
             // Given
             val extension = createMockExtension(
-                outputDirectory = "build/resources/main",
+                outputDirectory = "build/resources",
                 jsonFileNaming = "ddd-analysis",
                 maxClassesPerCompilation = invalidValue
             )
@@ -157,7 +157,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should throw exception when maxClassesPerCompilation is too high`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             jsonFileNaming = "ddd-analysis",
             maxClassesPerCompilation = 15000
         )
@@ -173,7 +173,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should throw exception when property analysis is enabled but method analysis is disabled`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             jsonFileNaming = "ddd-analysis",
             enableMethodAnalysis = false,
             enablePropertyAnalysis = true
@@ -190,7 +190,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `validate should pass when both method and property analysis are disabled`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             jsonFileNaming = "ddd-analysis",
             enableMethodAnalysis = false,
             enablePropertyAnalysis = false
@@ -207,7 +207,7 @@ class PragmaDddAnalyzerExtensionTest {
         reservedNames.forEach { reservedName ->
             // Given
             val extension = createMockExtension(
-                outputDirectory = "build/resources/main",
+                outputDirectory = "build/resources",
                 jsonFileNaming = reservedName
             )
             
@@ -227,7 +227,7 @@ class PragmaDddAnalyzerExtensionTest {
         // Given
         val longName = "a".repeat(101)
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             jsonFileNaming = longName
         )
         
@@ -262,7 +262,7 @@ class PragmaDddAnalyzerExtensionTest {
     
     @Test
     fun `validate should throw exception for output directory with leading or trailing whitespace`() {
-        listOf("  build/resources/main", "build/resources/main  ", "  build/resources/main  ").forEach { invalidPath ->
+        listOf("  build/resources", "build/resources  ", "  build/resources  ").forEach { invalidPath ->
             // Given
             val extension = createMockExtension(
                 outputDirectory = invalidPath,
@@ -345,7 +345,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `getConfigurationSummary should return formatted summary`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources/main",
+            outputDirectory = "build/resources",
             includeTestSources = true,
             jsonFileNaming = "custom-analysis",
             enableMethodAnalysis = false,
@@ -361,7 +361,7 @@ class PragmaDddAnalyzerExtensionTest {
         // Then
         assertNotNull(summary)
         assertTrue(summary.contains("Pragma DDD Analyzer Configuration:"))
-        assertTrue(summary.contains("Output Directory: build/resources/main"))
+        assertTrue(summary.contains("Output Directory: build/resources"))
         assertTrue(summary.contains("Include Test Sources: true"))
         assertTrue(summary.contains("JSON File Naming: custom-analysis"))
         assertTrue(summary.contains("Enable Method Analysis: false"))
@@ -404,7 +404,7 @@ class PragmaDddAnalyzerExtensionTest {
      * Creates a mock extension with the specified configuration values
      */
     private fun createMockExtension(
-        outputDirectory: String? = "build/resources/main",
+        outputDirectory: String? = "build/resources",
         includeTestSources: Boolean? = true,
         jsonFileNaming: String? = "ddd-analysis",
         enableMethodAnalysis: Boolean? = true,

@@ -291,7 +291,7 @@ class DddAnalysisIrGenerationExtension(
             println("DDD Analyzer: Generated main sources JSON with ${mainSourcesMetadata.size} classes")
             
             // Verify the file was written successfully
-            if (resourceWriter.verifyJsonFileWritten(outputDir, "ddd-analysis/$mainFileName")) {
+            if (resourceWriter.verifyJsonFileWritten(outputDir, "pragmaddd/$mainFileName")) {
                 println("DDD Analyzer: Main sources JSON file successfully written to META-INF")
             } else {
                 println("DDD Analyzer: Warning - Main sources JSON file verification failed")
@@ -307,7 +307,7 @@ class DddAnalysisIrGenerationExtension(
             println("DDD Analyzer: Generated test sources JSON with ${testSourcesMetadata.size} classes")
             
             // Verify the file was written successfully
-            if (resourceWriter.verifyJsonFileWritten(outputDir, "ddd-analysis/$testFileName")) {
+            if (resourceWriter.verifyJsonFileWritten(outputDir, "pragmaddd/$testFileName")) {
                 println("DDD Analyzer: Test sources JSON file successfully written to META-INF")
             } else {
                 println("DDD Analyzer: Warning - Test sources JSON file verification failed")
@@ -317,7 +317,7 @@ class DddAnalysisIrGenerationExtension(
         // List all generated JSON files for confirmation
         val jsonFiles = resourceWriter.listJsonFiles(outputDir)
         if (jsonFiles.isNotEmpty()) {
-            println("DDD Analyzer: Generated JSON files in META-INF/ddd-analysis/ for $sourceType compilation:")
+            println("DDD Analyzer: Generated JSON files in META-INF/pragmaddd/ for $sourceType compilation:")
             jsonFiles.forEach { file ->
                 println("  - ${file.name} (${file.length()} bytes)")
             }

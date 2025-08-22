@@ -4,6 +4,7 @@ import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.gradle.testfixtures.ProjectBuilder
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
+import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -70,8 +71,11 @@ class PragmaDddAnalyzerPluginTest {
     @Test
     fun `isApplicable should return true for all compilations`() {
         // Given
+        val target = mock<KotlinTarget>()
         val compilation = mock<KotlinCompilation<*>>()
         whenever(compilation.name).thenReturn("main")
+        whenever(compilation.target).thenReturn(target)
+        whenever(target.project).thenReturn(project)
         
         // When
         val result = plugin.isApplicable(compilation)
@@ -113,10 +117,11 @@ class PragmaDddAnalyzerPluginTest {
         extension.maxClassesPerCompilation.set(500)
         extension.failOnAnalysisErrors.set(true)
         
+        val target = mock<KotlinTarget>()
         val compilation = mock<KotlinCompilation<*>>()
         whenever(compilation.name).thenReturn("main")
-        whenever(compilation.target).thenReturn(mock())
-        whenever(compilation.target.project).thenReturn(project)
+        whenever(compilation.target).thenReturn(target)
+        whenever(target.project).thenReturn(project)
         
         // When
         val optionsProvider: Provider<List<SubpluginOption>> = plugin.applyToCompilation(compilation)
@@ -143,10 +148,11 @@ class PragmaDddAnalyzerPluginTest {
         // Given
         plugin.apply(project)
         
+        val target = mock<KotlinTarget>()
         val compilation = mock<KotlinCompilation<*>>()
         whenever(compilation.name).thenReturn("main")
-        whenever(compilation.target).thenReturn(mock())
-        whenever(compilation.target.project).thenReturn(project)
+        whenever(compilation.target).thenReturn(target)
+        whenever(target.project).thenReturn(project)
         
         // When
         val optionsProvider: Provider<List<SubpluginOption>> = plugin.applyToCompilation(compilation)
@@ -166,10 +172,11 @@ class PragmaDddAnalyzerPluginTest {
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
         // Output directory is now fixed and cannot be configured
         
+        val target = mock<KotlinTarget>()
         val compilation = mock<KotlinCompilation<*>>()
         whenever(compilation.name).thenReturn("main")
-        whenever(compilation.target).thenReturn(mock())
-        whenever(compilation.target.project).thenReturn(project)
+        whenever(compilation.target).thenReturn(target)
+        whenever(target.project).thenReturn(project)
         
         // When
         val optionsProvider: Provider<List<SubpluginOption>> = plugin.applyToCompilation(compilation)
@@ -188,10 +195,11 @@ class PragmaDddAnalyzerPluginTest {
         val extension = project.extensions.getByType(PragmaDddAnalyzerExtension::class.java)
         // Output directory is now fixed and cannot be configured
         
+        val target = mock<KotlinTarget>()
         val compilation = mock<KotlinCompilation<*>>()
         whenever(compilation.name).thenReturn("main")
-        whenever(compilation.target).thenReturn(mock())
-        whenever(compilation.target.project).thenReturn(project)
+        whenever(compilation.target).thenReturn(target)
+        whenever(target.project).thenReturn(project)
         
         // When
         val optionsProvider: Provider<List<SubpluginOption>> = plugin.applyToCompilation(compilation)

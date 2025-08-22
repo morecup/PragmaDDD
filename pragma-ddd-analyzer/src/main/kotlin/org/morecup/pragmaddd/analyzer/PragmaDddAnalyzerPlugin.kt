@@ -112,6 +112,13 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
                 processResourcesTask.dependsOn(compileKotlinTask)
             }
         }
+        
+        // Ensure sourcesJar task depends on main Kotlin compilation
+        project.tasks.findByName("sourcesJar")?.let { sourcesJarTask ->
+            project.tasks.findByName("compileKotlin")?.let { compileKotlinTask ->
+                sourcesJarTask.dependsOn(compileKotlinTask)
+            }
+        }
     }
     
     /**
@@ -119,26 +126,21 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
      */
     private fun configureIncrementalCompilation(project: Project) {
         project.tasks.withType(KotlinCompile::class.java) { compileTask ->
-            // Add FIXED output directory as task output for incremental compilation
-            val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
-            val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
-            
-            // Register the META-INF directory as output for incremental compilation
-            compileTask.outputs.dir(metaInfDir)
-            
-            // Mark as incremental compilation compatible
-            compileTask.outputs.upToDateWhen {
-                // Check if the FIXED JSON file exists and is recent
+            // Only register outputs for main compilation task (not test compilation)
+            if (compileTask.name == "compileKotlin") {
                 val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
-                val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
-                if (!fixedJsonFile.exists()) {
-                    false // No output file exists, need to run
-                } else {
-                    val outputLastModified = fixedJsonFile.lastModified()
-                    // Simple check - if output file is newer than a reasonable time, consider up-to-date
-                    outputLastModified > (System.currentTimeMillis() - 60000) // 1 minute threshold
-                }
+                val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
+                
+                // Register the generated directory as output, not the specific file
+                // This avoids the "Expected file to exist" error while still enabling incremental compilation
+                compileTask.outputs.dir(metaInfDir)
+                    .withPropertyName("dddAnalysisOutput")
+                    .optional()
+                
+                project.logger.info("DDD Analyzer: Registered output directory for incremental compilation: ${metaInfDir.absolutePath}")
             }
+            
+            project.logger.info("DDD Analyzer: Configuring incremental compilation for task: ${compileTask.name}")
         }
     }
     
@@ -146,16 +148,23 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
      * Configures resource generation for JAR packaging
      */
     private fun configureResourceGeneration(project: Project, extension: PragmaDddAnalyzerExtension) {
-        // Ensure generated JSON files are included in JAR resources from FIXED path
-        project.tasks.findByName("jar")?.let { jarTask ->
+        // Configure JAR task to include generated JSON files from FIXED path
+        project.tasks.withType(org.gradle.api.tasks.bundling.Jar::class.java) { jarTask ->
+            // Add the generated resources directory to the JAR
+            val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+            
             jarTask.doFirst {
-                val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
                 val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
                 if (fixedJsonFile.exists()) {
                     project.logger.info("DDD Analyzer: Including JSON file from FIXED path ${fixedJsonFile.absolutePath} in JAR")
                 } else {
                     project.logger.warn("DDD Analyzer: Expected JSON file not found at FIXED path ${fixedJsonFile.absolutePath}")
                 }
+            }
+            
+            // Configure the JAR task to include the generated resources
+            jarTask.from(fixedOutputDir) {
+                it.include("**/*.json")
             }
         }
         
@@ -169,7 +178,7 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
         val isTestCompilation = kotlinCompilation.name.contains("test", ignoreCase = true)
         
         // Skip applying the plugin to its own module to prevent self-analysis
-        val projectName = kotlinCompilation.target.project.name
+        val projectName = kotlinCompilation.target?.project?.name ?: "unknown"
         val isOwnModule = projectName == "pragma-ddd-analyzer"
         
         println("DDD Analyzer: isApplicable() called for compilation: ${kotlinCompilation.name}, project: $projectName, isTest: $isTestCompilation, isOwnModule: $isOwnModule")

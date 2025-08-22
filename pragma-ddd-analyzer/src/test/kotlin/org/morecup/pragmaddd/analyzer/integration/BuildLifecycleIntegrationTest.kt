@@ -33,7 +33,7 @@ class BuildLifecycleIntegrationTest {
         assertNotNull(extension)
         
         // Verify default configuration
-        assertEquals("build/resources", extension!!.outputDirectory.get())
+        assertEquals("build/generated/resources", extension!!.outputDirectory.get())
         assertEquals("ddd-analysis", extension.jsonFileNaming.get())
     }
     

@@ -240,3 +240,7 @@
 
 
 - [x] 19. pragma-ddd-analyzer main resource 下没有生成json
+
+- [ ] 20. pragma-ddd-analyzer build/generated/resources 在单独compileKotlin的时候会生成demo-ddd-analysis-main.json，但是执行build却没有生成json
+
+- [ ] 21. build/generated/resources/main/.ddd-analyzer-main-metadata.json这里有build/generated/resources/main/META-INF/ddd-analysis/demo-ddd-analysis-main.json这里也有？？

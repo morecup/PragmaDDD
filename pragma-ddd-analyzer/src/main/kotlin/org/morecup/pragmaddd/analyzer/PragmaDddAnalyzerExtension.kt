@@ -11,7 +11,7 @@ abstract class PragmaDddAnalyzerExtension {
     
     /**
      * Output directory for generated JSON files
-     * Default: "build/resources/main" for JAR packaging
+     * Default: "build/generated/resources/main" for JAR packaging
      * Can be absolute or relative path. Relative paths are resolved against project directory.
      */
     abstract val outputDirectory: Property<String>

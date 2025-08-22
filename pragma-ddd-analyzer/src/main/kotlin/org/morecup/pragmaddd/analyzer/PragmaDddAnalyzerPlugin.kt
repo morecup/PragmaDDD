@@ -29,15 +29,15 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
             PragmaDddAnalyzerExtension::class.java
         )
         
-        // Set default values - use resources directory for JAR packaging
-        extension.outputDirectory.convention("build/resources")
+        // Set default values - use generated resources directory for JAR packaging
+        extension.outputDirectory.convention("build/generated/resources")
         extension.jsonFileNaming.convention("ddd-analysis")
         extension.enableMethodAnalysis.convention(true)
         extension.enablePropertyAnalysis.convention(true)
         extension.enableDocumentationExtraction.convention(true)
         extension.maxClassesPerCompilation.convention(1000)
         extension.failOnAnalysisErrors.convention(false)
-        
+
         // Configure build lifecycle integration
         configureBuildLifecycle(target, extension)
         

@@ -262,7 +262,7 @@ class PragmaDddAnalyzerExtensionTest {
     
     @Test
     fun `validate should throw exception for output directory with leading or trailing whitespace`() {
-        listOf("  build/resources", "build/resources  ", "  build/resources  ").forEach { invalidPath ->
+        listOf("  build/generated/resources", "build/generated/resources  ", "  build/generated/resources  ").forEach { invalidPath ->
             // Given
             val extension = createMockExtension(
                 outputDirectory = invalidPath,
@@ -335,7 +335,7 @@ class PragmaDddAnalyzerExtensionTest {
     fun `getConfigurationSummary should return formatted summary`() {
         // Given
         val extension = createMockExtension(
-            outputDirectory = "build/resources",
+            outputDirectory = "build/generated/resources",
             jsonFileNaming = "custom-analysis",
             enableMethodAnalysis = false,
             enablePropertyAnalysis = true,
@@ -350,7 +350,7 @@ class PragmaDddAnalyzerExtensionTest {
         // Then
         assertNotNull(summary)
         assertTrue(summary.contains("Pragma DDD Analyzer Configuration:"))
-        assertTrue(summary.contains("Output Directory: build/resources"))
+        assertTrue(summary.contains("Output Directory: build/generated/resources"))
         assertTrue(summary.contains("JSON File Naming: custom-analysis"))
         assertTrue(summary.contains("Enable Method Analysis: false"))
         assertTrue(summary.contains("Enable Property Analysis: true"))
@@ -390,7 +390,7 @@ class PragmaDddAnalyzerExtensionTest {
      * Creates a mock extension with the specified configuration values
      */
     private fun createMockExtension(
-        outputDirectory: String? = "build/resources",
+        outputDirectory: String? = "build/generated/resources",
         jsonFileNaming: String? = "ddd-analysis",
         enableMethodAnalysis: Boolean? = true,
         enablePropertyAnalysis: Boolean? = true,

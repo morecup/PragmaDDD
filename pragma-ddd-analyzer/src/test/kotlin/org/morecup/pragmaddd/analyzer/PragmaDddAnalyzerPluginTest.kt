@@ -39,7 +39,7 @@ class PragmaDddAnalyzerPluginTest {
         assertNotNull(extension)
         
         // Verify default values
-        assertEquals("build/resources", extension.outputDirectory.get())
+        assertEquals("build/generated/resources", extension.outputDirectory.get())
         // includeTestSources property removed
         assertEquals("ddd-analysis", extension.jsonFileNaming.get())
         assertEquals(true, extension.enableMethodAnalysis.get())

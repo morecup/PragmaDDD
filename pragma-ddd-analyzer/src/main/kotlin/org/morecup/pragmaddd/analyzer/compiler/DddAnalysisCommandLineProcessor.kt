@@ -10,6 +10,11 @@ import org.jetbrains.kotlin.config.CompilerConfigurationKey
 @OptIn(ExperimentalCompilerApi::class)
 class DddAnalysisCommandLineProcessor : CommandLineProcessor {
     
+    init {
+        println("DDD Analyzer: CommandLineProcessor initialized")
+        System.err.println("DDD Analyzer: CommandLineProcessor initialized")
+    }
+    
     // Override the deprecated method to delegate to the new one
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun processOption(

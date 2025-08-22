@@ -14,9 +14,26 @@ class DddAnalysisCompilerPluginRegistrar : CompilerPluginRegistrar() {
     
     override val supportsK2: Boolean = true
     
+    init {
+        // Add initialization logging
+        println("DDD Analyzer: ComponentRegistrar initialized")
+        System.err.println("DDD Analyzer: ComponentRegistrar initialized")
+    }
+    
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
+        // Force output to multiple streams to ensure visibility
         println("DDD Analyzer: Compiler plugin registrar called - THIS SHOULD ALWAYS APPEAR!")
+        System.out.println("DDD Analyzer: Compiler plugin registrar called - THIS SHOULD ALWAYS APPEAR!")
         System.err.println("DDD Analyzer: Compiler plugin registrar called - THIS SHOULD ALWAYS APPEAR!")
+        
+        // Also write to a file for debugging
+        try {
+            val debugFile = java.io.File("ddd-analyzer-debug.log")
+            debugFile.appendText("DDD Analyzer: Compiler plugin registrar called at ${System.currentTimeMillis()}\n")
+        } catch (e: Exception) {
+            // Ignore file write errors
+        }
+        
         System.out.flush()
         System.err.flush()
         

@@ -47,14 +47,7 @@ interface MetadataCollector {
     fun getMemoryUsage(): MemoryUsageStats
 }
 
-/**
- * Validation result containing errors and warnings
- */
-data class ValidationResult(
-    val isValid: Boolean,
-    val errors: List<AnalysisError>,
-    val warnings: List<AnalysisWarning>
-)
+
 
 /**
  * Memory usage statistics for monitoring

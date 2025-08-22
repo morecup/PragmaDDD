@@ -71,7 +71,13 @@ class PragmaDddAnalyzerPluginTest {
     fun `isApplicable should return true for all compilations`() {
         // Given
         val compilation = mock<KotlinCompilation<*>>()
+        val target = mock<org.jetbrains.kotlin.gradle.plugin.KotlinTarget>()
+        val targetProject = mock<Project>()
+        
         whenever(compilation.name).thenReturn("main")
+        whenever(compilation.target).thenReturn(target)
+        whenever(target.project).thenReturn(targetProject)
+        whenever(targetProject.name).thenReturn("test-project")
         
         // When
         val result = plugin.isApplicable(compilation)

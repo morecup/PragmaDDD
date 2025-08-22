@@ -82,26 +82,43 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
     private fun configureTaskDependencies(project: Project, extension: PragmaDddAnalyzerExtension) {
         // Find all Kotlin compilation tasks
         project.tasks.withType(KotlinCompile::class.java) { compileTask ->
-            // Ensure FIXED output directory exists before compilation
-            // Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
-            compileTask.doFirst {
-                val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
-                val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
-                if (!metaInfDir.exists()) {
-                    metaInfDir.mkdirs()
-                    project.logger.info("DDD Analyzer: Created FIXED output directory: ${metaInfDir.absolutePath}")
-                }
-            }
+            val isTestTask = compileTask.name.contains("test", ignoreCase = true)
             
-            // Log completion of analysis after compilation
-            compileTask.doLast {
-                val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
-                val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
+            if (!isTestTask) {
+                // Only configure main compilation tasks
+                // Ensure FIXED output directory exists before compilation
+                // Fixed path: build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+                compileTask.doFirst {
+                    val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                    val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
+                    if (!metaInfDir.exists()) {
+                        metaInfDir.mkdirs()
+                        project.logger.info("DDD Analyzer: Created FIXED output directory: ${metaInfDir.absolutePath}")
+                    }
+                }
                 
-                if (fixedJsonFile.exists()) {
-                    project.logger.info("DDD Analyzer: Generated main source analysis at FIXED path: ${fixedJsonFile.absolutePath}")
-                } else {
-                    project.logger.warn("DDD Analyzer: Expected JSON file not found at FIXED path: ${fixedJsonFile.absolutePath}")
+                // Log completion of analysis after compilation
+                compileTask.doLast {
+                    val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                    val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
+                    
+                    if (fixedJsonFile.exists()) {
+                        project.logger.info("DDD Analyzer: Generated main source analysis at FIXED path: ${fixedJsonFile.absolutePath}")
+                    } else {
+                        project.logger.warn("DDD Analyzer: Expected JSON file not found at FIXED path: ${fixedJsonFile.absolutePath}")
+                    }
+                }
+            } else {
+                // For test tasks, just log that we're not processing them
+                compileTask.doLast {
+                    val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                    val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
+                    
+                    if (fixedJsonFile.exists()) {
+                        project.logger.info("DDD Analyzer: Main source analysis available at FIXED path: ${fixedJsonFile.absolutePath}")
+                    } else {
+                        project.logger.info("DDD Analyzer: No main source analysis found (test compilation does not generate analysis)")
+                    }
                 }
             }
         }
@@ -119,24 +136,28 @@ class PragmaDddAnalyzerPlugin : KotlinCompilerPluginSupportPlugin {
      */
     private fun configureIncrementalCompilation(project: Project) {
         project.tasks.withType(KotlinCompile::class.java) { compileTask ->
-            // Add FIXED output directory as task output for incremental compilation
-            val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
-            val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
-            
-            // Register the META-INF directory as output for incremental compilation
-            compileTask.outputs.dir(metaInfDir)
-            
-            // Mark as incremental compilation compatible
-            compileTask.outputs.upToDateWhen {
-                // Check if the FIXED JSON file exists and is recent
+            // Only configure incremental compilation for main compilation tasks, not test tasks
+            val isTestTask = compileTask.name.contains("test", ignoreCase = true)
+            if (!isTestTask) {
+                // Add FIXED output directory as task output for incremental compilation
                 val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
-                val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
-                if (!fixedJsonFile.exists()) {
-                    false // No output file exists, need to run
-                } else {
-                    val outputLastModified = fixedJsonFile.lastModified()
-                    // Simple check - if output file is newer than a reasonable time, consider up-to-date
-                    outputLastModified > (System.currentTimeMillis() - 60000) // 1 minute threshold
+                val metaInfDir = File(fixedOutputDir, FIXED_META_INF_PATH)
+                
+                // Register the META-INF directory as output for incremental compilation
+                compileTask.outputs.dir(metaInfDir)
+                
+                // Mark as incremental compilation compatible
+                compileTask.outputs.upToDateWhen {
+                    // Check if the FIXED JSON file exists and is recent
+                    val fixedOutputDir = File(project.projectDir, FIXED_OUTPUT_DIRECTORY)
+                    val fixedJsonFile = File(fixedOutputDir, "$FIXED_META_INF_PATH/$FIXED_JSON_FILENAME.json")
+                    if (!fixedJsonFile.exists()) {
+                        false // No output file exists, need to run
+                    } else {
+                        val outputLastModified = fixedJsonFile.lastModified()
+                        // Simple check - if output file is newer than a reasonable time, consider up-to-date
+                        outputLastModified > (System.currentTimeMillis() - 60000) // 1 minute threshold
+                    }
                 }
             }
         }

@@ -75,15 +75,11 @@ class ErrorHandlingIntegrationTest {
     fun `JsonGenerator should handle file write exceptions gracefully`() {
         val jsonGenerator = JsonGeneratorImpl(errorReporter)
         
-        // Try to write to an invalid path (Windows-style invalid path)
-        val invalidPath = "Z:\\invalid\\path\\that\\does\\not\\exist\\file.json"
+        // Try to write to an invalid path - use a path with invalid characters
+        val invalidPath = "CON:\\invalid<>|path\\file.json"  // CON is a reserved name in Windows
         
-        try {
-            jsonGenerator.writeToFile("{}", invalidPath)
-            fail("Expected exception to be thrown")
-        } catch (e: Exception) {
-            // Exception is expected
-        }
+        // With error reporter, should not throw exception but report error
+        jsonGenerator.writeToFile("{}", invalidPath)
         
         // Should report the error
         assertEquals(1, errorReporter.getErrors().size)

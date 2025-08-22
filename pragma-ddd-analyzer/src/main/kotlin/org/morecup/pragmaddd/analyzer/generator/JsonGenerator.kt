@@ -152,7 +152,10 @@ class JsonGeneratorImpl(
                     cause = e
                 )
             )
-            throw e
+            // Only re-throw if no error reporter is available
+            if (errorReporter == null) {
+                throw e
+            }
         }
     }
     

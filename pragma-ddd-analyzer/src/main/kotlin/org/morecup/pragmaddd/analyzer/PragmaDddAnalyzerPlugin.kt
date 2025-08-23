@@ -43,10 +43,8 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         this.project = project
 
-        project.tasks.withType(ProcessResources::class.java).configureEach { processResources ->
-            processResources.duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-            processResources.dependsOn("compileKotlin", "compileJava")
-        }
+        // 配置 ProcessResources 任务
+        configureProcessResourcesTasks()
         
         // 确保 Java 插件已应用
         project.plugins.apply(JavaBasePlugin::class.java)
@@ -69,6 +67,21 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
             val compileTaskName = mainSourceSet.getCompileTaskName(language)
             project.tasks.named(compileTaskName) { compileTask ->
                 enhanceWithAnalysisAction(compileTask, extension, mainSourceSet.name)
+            }
+        }
+    }
+    
+    private fun configureProcessResourcesTasks() {
+        project.tasks.withType(ProcessResources::class.java).configureEach { processResources ->
+            processResources.duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+            
+            // 基于插件存在性来添加编译依赖
+            project.plugins.withType(JavaPlugin::class.java) {
+                processResources.dependsOn("compileJava")
+            }
+            
+            project.plugins.withId("org.jetbrains.kotlin.jvm") {
+                processResources.dependsOn("compileKotlin")
             }
         }
     }

@@ -3,20 +3,16 @@ package org.morecup.pragmaddd.analyzer
 import org.gradle.api.Action
 import org.gradle.api.Task
 import org.gradle.api.file.ConfigurableFileCollection
-import org.gradle.api.file.FileCollection
-import org.gradle.api.file.FileTree
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.compile.AbstractCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import java.io.File
-import java.lang.reflect.Field
 import javax.inject.Inject
 import kotlin.collections.filter
 
@@ -166,6 +162,21 @@ open class DddAnalysisAction @Inject constructor(
 
         // 声明输出文件
         task.outputs.dir(outputFile)
+
+        // 将生成的资源目录添加到项目的资源源码集中
+        try {
+            val project = task.project
+            val javaExtension = project.extensions.findByType(org.gradle.api.plugins.JavaPluginExtension::class.java)
+            if (javaExtension != null) {
+                val sourceSet = javaExtension.sourceSets.findByName(sourceSetName)
+                if (sourceSet != null) {
+                    val generatedResourcesDir = project.file("build/generated/pragmaddd/$sourceSetName/resources")
+                    sourceSet.resources.srcDir(generatedResourcesDir)
+                }
+            }
+        } catch (e: Exception) {
+            task.logger.error("[Pragma DDD] 无法配置资源目录: ${e.message}")
+        }
 
         task.doLast("pragma-ddd-analysis", this)
 

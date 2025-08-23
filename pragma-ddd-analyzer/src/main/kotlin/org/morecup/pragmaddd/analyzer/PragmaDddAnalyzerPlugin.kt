@@ -3,12 +3,15 @@ package org.morecup.pragmaddd.analyzer
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.api.internal.provider.ValueSupplier.ValueProducer.task
 import org.gradle.api.plugins.JavaBasePlugin
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.compile.AbstractCompile
+import org.gradle.language.jvm.tasks.ProcessResources
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 /**
@@ -71,6 +74,11 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
         this.project = project
+
+        project.tasks.withType(ProcessResources::class.java).configureEach { processResources ->
+            processResources.duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+            processResources.dependsOn("compileKotlin", "compileJava")
+        }
         
         // 确保 Java 插件已应用
         project.plugins.apply(JavaBasePlugin::class.java)

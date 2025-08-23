@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
  * ```
  *
  * 注意：
+ * - 分析会在编译时自动执行，无需手动运行任务
  * - 输出文件固定为 JSON 格式
  * - 输出路径固定为 build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
  * - 只处理 main SourceSet 的 compileJava 和 compileKotlin 任务
@@ -100,40 +101,28 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
     }
 
     private fun configureSourceSetDefaults(sourceSet: SourceSet, extension: PragmaDddAnalyzerExtension) {
-        // 为每个 SourceSet 创建对应的分析任务
-        val taskName = if (sourceSet.name == "main") "analyzeDddClasses" else "analyze${sourceSet.name.replaceFirstChar { it.uppercase() }}DddClasses"
-        
-        project.tasks.register(taskName, AnalyzeDddClassesTask::class.java) { task ->
-            task.group = "pragma-ddd"
-            task.description = "分析 ${sourceSet.name} SourceSet 中 @AggregateRoot 注解的类的属性访问情况"
-            task.extension = extension
-            task.sourceSetName = sourceSet.name
-        }
+        // 不再需要创建分析任务，直接通过 DddAnalysisAction 处理
     }
     
     private fun configurePlugin(language: String, extension: PragmaDddAnalyzerExtension) {
         // 只处理 main SourceSet
         val mainSourceSet = sourceSets.findByName("main")
         if (mainSourceSet != null) {
-            val taskName = "analyzeDddClasses"
-            
             // 获取对应语言的编译任务
             val compileTaskName = mainSourceSet.getCompileTaskName(language)
             project.tasks.named(compileTaskName) { compileTask ->
-                // 获取分析任务
-                val analyzeTask = project.tasks.named(taskName, AnalyzeDddClassesTask::class.java).get()
-                enhanceWithAnalysisAction(compileTask, analyzeTask)
+                enhanceWithAnalysisAction(compileTask, extension, mainSourceSet.name)
             }
         }
     }
     
-    private fun enhanceWithAnalysisAction(compileTask: Task, analyzeTask: AnalyzeDddClassesTask) {
+    private fun enhanceWithAnalysisAction(compileTask: Task, extension: PragmaDddAnalyzerExtension, sourceSetName: String) {
         // 创建 DDD 分析 Action
         val analysisAction = project.objects.newInstance(DddAnalysisAction::class.java)
         
         // 配置分析 Action
-        analysisAction.extension = analyzeTask.extension
-        analysisAction.sourceSetName = analyzeTask.sourceSetName
+        analysisAction.extension = extension
+        analysisAction.sourceSetName = sourceSetName
         
         // 获取编译输出目录
         when (compileTask) {
@@ -147,9 +136,6 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         
         // 将分析 Action 添加到编译任务
         analysisAction.addToTask(compileTask)
-        
-        // 让其他任务依赖编译任务（间接依赖分析）
-        // 但不要让分析任务直接依赖编译任务，避免循环依赖
         
         println("[Pragma DDD] 已为编译任务 ${compileTask.name} 配置 DDD 分析")
     }

@@ -41,8 +41,9 @@ dependencies {
 # 编译类文件（会自动运行分析）
 ./gradlew classes
 
-# 手动运行分析
-./gradlew analyzeDddClasses
+# 分析会在编译时自动运行
+# 编译项目即可触发 DDD 分析
+./gradlew build
 ```
 
 ### 3. 查看分析结果

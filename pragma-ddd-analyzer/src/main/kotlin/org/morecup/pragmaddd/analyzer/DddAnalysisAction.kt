@@ -174,7 +174,10 @@ open class DddAnalysisAction @Inject constructor(
             task.logger.error("[Pragma DDD] 无法配置资源目录: ${e.message}")
         }
 
-        task.doLast("pragma-ddd-analysis", this)
+        task.doLast("pragma-ddd-analysis") {
+            println("DddAnalysisAction execute called")
+            execute(task)
+        }
 
         val actions = task.actions.toMutableList()
         // 查找 ajc action（使用反射访问私有类）

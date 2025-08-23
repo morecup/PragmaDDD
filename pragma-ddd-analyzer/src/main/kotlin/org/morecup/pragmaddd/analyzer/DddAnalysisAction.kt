@@ -16,7 +16,9 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.compile.AbstractCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import java.io.File
+import java.lang.reflect.Field
 import javax.inject.Inject
+import kotlin.collections.filter
 
 /**
  * DDD 分析 Action，用于在编译完成后立即执行领域模型分析
@@ -165,13 +167,48 @@ open class DddAnalysisAction @Inject constructor(
         // 声明输出文件
         task.outputs.dir(outputFile)
 
-        // 使用 doLast 确保在编译完成后执行
         task.doLast("pragma-ddd-analysis", this)
+
+        val actions = task.actions.toMutableList()
+        // 查找 ajc action（使用反射访问私有类）
+        val ajcActions = findAjcActions(actions)
+
+        ajcActions?.let { 
+            // 将ajcActions移动到列表最后
+            actions.removeAll(it)
+            actions.addAll(it)
+            task.actions = actions
+        }
         
         // 将 action 作为扩展添加到任务中，便于外部访问
         task.extensions.add("pragmaDddAnalysis", this)
 
         // 注意：不注册输入输出，避免循环依赖
         // Gradle 会自动检测和处理 doLast 中的操作
+    }
+
+    /**
+     * 使用反射方式查找 ajc action
+     */
+    private fun findAjcActions(actions: MutableList<Action<in Task>>): List<Action<in Task>>? {
+        return try {
+            // 获取 AbstractTask.TaskActionWrapper 类
+            val taskActionWrapperClass = Class.forName("org.gradle.api.internal.AbstractTask\$TaskActionWrapper")
+            // 获取 maybeActionName 字段
+            val maybeActionNameField = taskActionWrapperClass.getDeclaredField("maybeActionName")
+            maybeActionNameField.isAccessible = true
+
+            actions.filter { action ->
+                if (taskActionWrapperClass.isInstance(action)) {
+                    val maybeActionName = maybeActionNameField.get(action) as String?
+                    maybeActionName == "ajc"
+                } else {
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            // 如果反射失败，则返回 null
+            null
+        }
     }
 }

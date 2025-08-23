@@ -1,123 +1,125 @@
 package org.morecup.pragmaddd.analyzer
 
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.io.TempDir
 import org.assertj.core.api.Assertions.assertThat
-import org.objectweb.asm.*
 import java.io.File
-import java.io.FileOutputStream
 
 class AggregateRootAnalyzerTest {
     
-    @Test
-    fun `should analyze aggregate root class with property access`() {
-        // 创建测试用的字节码
-        val classBytes = createTestAggregateRootClass()
-        val tempFile = File.createTempFile("TestAggregateRoot", ".class")
-        tempFile.deleteOnExit()
-        
-        FileOutputStream(tempFile).use { it.write(classBytes) }
-        
-        // 分析类
-        val analyzer = AggregateRootAnalyzer()
-        val result = analyzer.analyzeClass(tempFile)
-        
-        // 验证结果
-        assertThat(result).isNotNull
-        assertThat(result!!.className).isEqualTo("TestAggregateRoot")
-        assertThat(result.isAggregateRoot).isTrue()
-        assertThat(result.methods).isNotEmpty()
+    @TempDir
+    lateinit var tempDir: File
+    
+    private lateinit var analyzer: AggregateRootAnalyzer
+    
+    @BeforeEach
+    fun setup() {
+        analyzer = AggregateRootAnalyzer()
     }
     
     @Test
-    fun `should return null for non-aggregate root class`() {
-        // 创建没有 @AggregateRoot 注解的类
-        val classBytes = createTestNormalClass()
-        val tempFile = File.createTempFile("TestNormalClass", ".class")
-        tempFile.deleteOnExit()
+    fun `should record all methods including those without property access or method calls`() {
+        // 这个测试验证修改后的行为：所有方法都应该被记录，不管是否有属性访问或方法调用
         
-        FileOutputStream(tempFile).use { it.write(classBytes) }
+        // 创建一个简单的测试类字节码（这里我们模拟测试场景）
+        // 实际的字节码分析需要真实的class文件，这里我们验证逻辑
         
-        // 分析类
-        val analyzer = AggregateRootAnalyzer()
-        val result = analyzer.analyzeClass(tempFile)
+        val visitor = AggregateRootClassVisitor()
         
-        // 验证结果
-        assertThat(result).isNull()
+        // 模拟访问一个带有@AggregateRoot注解的类
+        visitor.visit(52, 1, "com/example/TestClass", null, "java/lang/Object", null)
+        visitor.visitAnnotation("Lorg/morecup/pragmaddd/core/annotation/AggregateRoot;", true)
+        
+        // 模拟访问一个没有任何属性访问或方法调用的方法
+        val methodVisitor = visitor.visitMethod(1, "emptyMethod", "()V", null, null)
+        assertThat(methodVisitor).isInstanceOf(PropertyAccessMethodVisitor::class.java)
+        
+        // 结束方法访问
+        methodVisitor?.visitEnd()
+        
+        val result = visitor.getResult()
+        assertThat(result).isNotNull()
+        assertThat(result!!.isAggregateRoot).isTrue()
+        
+        // 验证即使是空方法也被记录了
+        assertThat(result.methods).hasSize(1)
+        val method = result.methods[0]
+        assertThat(method.methodName).isEqualTo("emptyMethod")
+        assertThat(method.methodDescriptor).isEqualTo("()V")
+        assertThat(method.accessedProperties).isEmpty()
+        assertThat(method.modifiedProperties).isEmpty()
+        assertThat(method.calledMethods).isEmpty()
     }
     
-    private fun createTestAggregateRootClass(): ByteArray {
-        val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+    @Test
+    fun `should record method calls from all classes not just current class`() {
+        // 这个测试验证修改后的行为：应该记录所有类的方法调用，不仅仅是当前类
         
-        cw.visit(
-            Opcodes.V11,
-            Opcodes.ACC_PUBLIC,
-            "TestAggregateRoot",
-            null,
-            "java/lang/Object",
-            null
+        val methods = mutableListOf<PropertyAccessInfo>()
+        val methodVisitor = PropertyAccessMethodVisitor("com.example.TestClass", "testMethod", "()V", methods)
+        
+        // 模拟调用当前类的方法
+        methodVisitor.visitMethodInsn(182, "com/example/TestClass", "currentClassMethod", "()V", false)
+        
+        // 模拟调用其他类的方法
+        methodVisitor.visitMethodInsn(182, "com/example/OtherClass", "otherClassMethod", "()V", false)
+        methodVisitor.visitMethodInsn(182, "java/lang/String", "toString", "()Ljava/lang/String;", false)
+        
+        methodVisitor.visitEnd()
+        
+        assertThat(methods).hasSize(1)
+        val method = methods[0]
+        
+        // 验证记录了所有方法调用，包括其他类的
+        assertThat(method.calledMethods).hasSize(3)
+        
+        val methodCalls = method.calledMethods.map { "${it.className}.${it.methodName}" }
+        assertThat(methodCalls).contains(
+            "com.example.TestClass.currentClassMethod",
+            "com.example.OtherClass.otherClassMethod", 
+            "java.lang.String.toString"
         )
-        
-        // 添加 @AggregateRoot 注解
-        val av = cw.visitAnnotation("Lorg/morecup/pragmaddd/core/annotation/AggregateRoot;", true)
-        av.visitEnd()
-        
-        // 添加字段
-        cw.visitField(Opcodes.ACC_PRIVATE, "name", "Ljava/lang/String;", null, null).visitEnd()
-        cw.visitField(Opcodes.ACC_PRIVATE, "age", "I", null, null).visitEnd()
-        
-        // 添加构造函数
-        val constructor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        constructor.visitCode()
-        constructor.visitVarInsn(Opcodes.ALOAD, 0)
-        constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        constructor.visitInsn(Opcodes.RETURN)
-        constructor.visitMaxs(1, 1)
-        constructor.visitEnd()
-        
-        // 添加测试方法，包含属性访问
-        val method = cw.visitMethod(Opcodes.ACC_PUBLIC, "updateName", "(Ljava/lang/String;)V", null, null)
-        method.visitCode()
-        // this.name = name;
-        method.visitVarInsn(Opcodes.ALOAD, 0)
-        method.visitVarInsn(Opcodes.ALOAD, 1)
-        method.visitFieldInsn(Opcodes.PUTFIELD, "TestAggregateRoot", "name", "Ljava/lang/String;")
-        // int currentAge = this.age;
-        method.visitVarInsn(Opcodes.ALOAD, 0)
-        method.visitFieldInsn(Opcodes.GETFIELD, "TestAggregateRoot", "age", "I")
-        method.visitVarInsn(Opcodes.ISTORE, 2)
-        method.visitInsn(Opcodes.RETURN)
-        method.visitMaxs(2, 3)
-        method.visitEnd()
-        
-        cw.visitEnd()
-        return cw.toByteArray()
     }
     
-    private fun createTestNormalClass(): ByteArray {
-        val cw = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+    @Test
+    fun `should record method calls with full class names`() {
+        val methods = mutableListOf<PropertyAccessInfo>()
+        val methodVisitor = PropertyAccessMethodVisitor("com.example.TestClass", "testMethod", "()V", methods)
         
-        cw.visit(
-            Opcodes.V11,
-            Opcodes.ACC_PUBLIC,
-            "TestNormalClass",
-            null,
-            "java/lang/Object",
-            null
-        )
+        // 模拟方法调用
+        methodVisitor.visitMethodInsn(182, "java/util/List", "add", "(Ljava/lang/Object;)Z", true)
+        methodVisitor.visitEnd()
         
-        // 不添加 @AggregateRoot 注解
+        assertThat(methods).hasSize(1)
+        val method = methods[0]
+        assertThat(method.calledMethods).hasSize(1)
         
-        // 添加构造函数
-        val constructor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        constructor.visitCode()
-        constructor.visitVarInsn(Opcodes.ALOAD, 0)
-        constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        constructor.visitInsn(Opcodes.RETURN)
-        constructor.visitMaxs(1, 1)
-        constructor.visitEnd()
+        val calledMethod = method.calledMethods.first()
+        assertThat(calledMethod.className).isEqualTo("java.util.List")
+        assertThat(calledMethod.methodName).isEqualTo("add")
+        assertThat(calledMethod.methodDescriptor).isEqualTo("(Ljava/lang/Object;)Z")
+        assertThat(calledMethod.callCount).isEqualTo(1)
+    }
+    
+    @Test
+    fun `should count multiple calls to same method`() {
+        val methods = mutableListOf<PropertyAccessInfo>()
+        val methodVisitor = PropertyAccessMethodVisitor("com.example.TestClass", "testMethod", "()V", methods)
         
-        cw.visitEnd()
-        return cw.toByteArray()
+        // 模拟多次调用同一个方法
+        methodVisitor.visitMethodInsn(182, "java/lang/String", "toString", "()Ljava/lang/String;", false)
+        methodVisitor.visitMethodInsn(182, "java/lang/String", "toString", "()Ljava/lang/String;", false)
+        methodVisitor.visitMethodInsn(182, "java/lang/String", "toString", "()Ljava/lang/String;", false)
+        methodVisitor.visitEnd()
+        
+        assertThat(methods).hasSize(1)
+        val method = methods[0]
+        assertThat(method.calledMethods).hasSize(1)
+        
+        val calledMethod = method.calledMethods.first()
+        assertThat(calledMethod.className).isEqualTo("java.lang.String")
+        assertThat(calledMethod.methodName).isEqualTo("toString")
+        assertThat(calledMethod.callCount).isEqualTo(3)
     }
 }

@@ -4,6 +4,7 @@ package org.morecup.pragmaddd.analyzer
  * 方法调用信息
  */
 data class MethodCallInfo(
+    val className: String,
     val methodName: String,
     val methodDescriptor: String,
     val callCount: Int = 1

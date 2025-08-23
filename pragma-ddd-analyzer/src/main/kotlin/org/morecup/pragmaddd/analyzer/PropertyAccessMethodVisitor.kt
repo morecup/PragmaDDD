@@ -44,37 +44,33 @@ class PropertyAccessMethodVisitor(
     ) {
         val ownerClassName = owner.replace('/', '.')
 
-        // 只关注当前类的方法调用
-        if (ownerClassName == className) {
-                // 记录方法调用
-                val methodKey = "$name$descriptor"
-                val existingCall = calledMethods[methodKey]
-                if (existingCall != null) {
-                    // 如果已经记录过这个方法调用，增加调用次数
-                    calledMethods[methodKey] = existingCall.copy(callCount = existingCall.callCount + 1)
-                } else {
-                    // 新的方法调用
-                    calledMethods[methodKey] = MethodCallInfo(name, descriptor, 1)
-                }
+        // 记录所有方法调用，不进行过滤
+        val methodKey = "$ownerClassName.$name$descriptor"
+        val existingCall = calledMethods[methodKey]
+        if (existingCall != null) {
+            // 如果已经记录过这个方法调用，增加调用次数
+            calledMethods[methodKey] = existingCall.copy(callCount = existingCall.callCount + 1)
+        } else {
+            // 新的方法调用，分别记录类名和方法名
+            calledMethods[methodKey] = MethodCallInfo(ownerClassName, name, descriptor, 1)
         }
+        
         super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
     }
     
     override fun visitEnd() {
         // 方法分析完成，记录结果
-        // 只要有属性访问、属性修改或方法调用，就记录这个方法
-        if (accessedProperties.isNotEmpty() || modifiedProperties.isNotEmpty() || calledMethods.isNotEmpty()) {
-            methods.add(
-                PropertyAccessInfo(
-                    className = className,
-                    methodName = methodName,
-                    methodDescriptor = methodDescriptor,
-                    accessedProperties = accessedProperties.toSet(),
-                    modifiedProperties = modifiedProperties.toSet(),
-                    calledMethods = calledMethods.values.toSet()
-                )
+        // 记录所有方法，不管是否有属性访问、属性修改或方法调用
+        methods.add(
+            PropertyAccessInfo(
+                className = className,
+                methodName = methodName,
+                methodDescriptor = methodDescriptor,
+                accessedProperties = accessedProperties.toSet(),
+                modifiedProperties = modifiedProperties.toSet(),
+                calledMethods = calledMethods.values.toSet()
             )
-        }
+        )
         super.visitEnd()
     }
 }

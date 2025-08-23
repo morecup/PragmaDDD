@@ -6,6 +6,8 @@
 
 - 分析编译后的字节码文件
 - 检测 `@AggregateRoot` 注解的类
+- **分析所有方法，包括没有属性访问或方法调用的方法**
+- **记录所有方法调用，不限于当前类的方法**
 - 分析方法内的属性访问（读取和写入）
 - 支持直接字段访问和 getter/setter 方法调用
 - 支持分析单个类文件、JAR 文件或目录
@@ -98,7 +100,29 @@ java -jar analyzer.jar build/classes/kotlin/main build/classes/kotlin/test
         "methodName": "updateProfile",
         "methodDescriptor": "(Ljava/lang/String;)V",
         "accessedProperties": ["name", "email"],
-        "modifiedProperties": ["name", "lastModified"]
+        "modifiedProperties": ["name", "lastModified"],
+        "calledMethods": [
+          {
+            "className": "java.lang.System",
+            "methodName": "currentTimeMillis",
+            "methodDescriptor": "()J",
+            "callCount": 1
+          },
+          {
+            "className": "com.example.User",
+            "methodName": "validate",
+            "methodDescriptor": "()Z",
+            "callCount": 2
+          }
+        ]
+      },
+      {
+        "className": "com.example.User",
+        "methodName": "getId",
+        "methodDescriptor": "()Ljava/lang/Long;",
+        "accessedProperties": ["id"],
+        "modifiedProperties": [],
+        "calledMethods": []
       }
     ]
   }
@@ -120,16 +144,22 @@ Pragma DDD 分析结果
 
 ## 检测能力
 
-分析器可以检测以下类型的属性访问：
+分析器可以检测以下内容：
 
 1. **直接字段访问**
    - `GETFIELD` 指令（读取字段）
    - `PUTFIELD` 指令（写入字段）
 
 2. **方法调用**
-   - `getXxx()` 方法（getter）
-   - `isXxx()` 方法（boolean getter）
-   - `setXxx()` 方法（setter）
+   - **所有方法调用，包括其他类的方法**
+   - 记录完整的类名和方法签名
+   - 统计方法调用次数
+   - 支持接口方法调用
+
+3. **方法分析**
+   - **记录所有方法，包括空方法**
+   - 提供完整的方法描述符
+   - 区分属性访问和方法调用
 
 ## 插件配置
 
@@ -155,3 +185,12 @@ pragmaDddAnalyzer {
 - 需要先编译类文件才能进行分析
 - 插件会自动处理main和test源集的编译依赖关系
 - 分析会在编译完成后自动执行，无需手动运行
+- **现在会记录所有方法，即使没有属性访问或方法调用**
+- **方法调用记录包含完整的类名，不仅限于当前类**
+
+## 更新日志
+
+### v1.1.0
+- ✅ **修复**: 现在会显示所有方法，包括没有属性访问和方法调用的方法
+- ✅ **增强**: 记录所有方法调用，不再过滤只记录当前类的方法
+- ✅ **改进**: 方法调用信息包含完整的类名和调用次数统计

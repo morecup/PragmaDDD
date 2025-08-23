@@ -1,5 +1,7 @@
 package org.morecup.pragmaddd.analyzer
 
+import org.gradle.api.internal.tasks.testing.junit.JUnitTestEventAdapter.methodName
+import org.gradle.internal.impldep.org.junit.experimental.ParallelComputer.methods
 import org.objectweb.asm.*
 
 /**
@@ -41,11 +43,9 @@ class PropertyAccessMethodVisitor(
         isInterface: Boolean
     ) {
         val ownerClassName = owner.replace('/', '.')
-        
+
         // 只关注当前类的方法调用
         if (ownerClassName == className) {
-            // 跳过构造方法和静态初始化块
-            if (name != "<init>" && name != "<clinit>") {
                 // 记录方法调用
                 val methodKey = "$name$descriptor"
                 val existingCall = calledMethods[methodKey]
@@ -56,26 +56,6 @@ class PropertyAccessMethodVisitor(
                     // 新的方法调用
                     calledMethods[methodKey] = MethodCallInfo(name, descriptor, 1)
                 }
-                
-                // 检测 getter/setter 方法调用，推断属性访问
-                when {
-                    name.startsWith("get") && name.length > 3 -> {
-                        // getter 方法
-                        val propertyName = name.substring(3).replaceFirstChar { it.lowercase() }
-                        accessedProperties.add(propertyName)
-                    }
-                    name.startsWith("is") && name.length > 2 -> {
-                        // boolean getter 方法
-                        val propertyName = name.substring(2).replaceFirstChar { it.lowercase() }
-                        accessedProperties.add(propertyName)
-                    }
-                    name.startsWith("set") && name.length > 3 -> {
-                        // setter 方法
-                        val propertyName = name.substring(3).replaceFirstChar { it.lowercase() }
-                        modifiedProperties.add(propertyName)
-                    }
-                }
-            }
         }
         super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
     }

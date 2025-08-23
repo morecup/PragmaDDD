@@ -187,3 +187,85 @@ methods.add(
 ### 额外修正
 
 在实现过程中，还修正了 `MethodCallInfo` 数据结构，将原来混合在 `methodName` 中的类名和方法名分离为独立的 `className` 和 `methodName` 字段，使得数据结构更加清晰和易于使用。
+
+### Lambda 分析功能增强 (v1.2.0)
+
+基于 pragma-ddd-core 中的预分析实现，进一步增强了 pragma-ddd-analyzer 的功能：
+
+#### 新增功能
+
+1. **Lambda 表达式检测**
+   - 通过 `visitInvokeDynamicInsn` 方法检测 Lambda 表达式
+   - 识别 LambdaMetafactory 生成的动态调用
+   - 提取 Lambda 实现方法信息
+
+2. **函数式接口类型识别**
+   - 从方法描述符中提取函数式接口类型
+   - 支持 Consumer, Function, Predicate 等标准函数式接口
+   - 记录 Lambda 的类型信息
+
+3. **Lambda 与方法调用关联**
+   - 将 Lambda 表达式关联到使用它们的方法调用
+   - 在 `MethodCallInfo` 中添加 `associatedLambdas` 字段
+   - 提供完整的函数式编程分析
+
+#### 数据结构扩展
+
+```kotlin
+// 新增 Lambda 信息结构
+data class LambdaInfo(
+    val className: String,
+    val methodName: String,
+    val methodDescriptor: String,
+    val lambdaType: String,
+    val capturedVariables: Set<String> = emptySet()
+)
+
+// 扩展方法调用信息
+data class MethodCallInfo(
+    val className: String,
+    val methodName: String,
+    val methodDescriptor: String,
+    val callCount: Int = 1,
+    val associatedLambdas: Set<LambdaInfo> = emptySet() // 新增
+)
+
+// 扩展属性访问信息
+data class PropertyAccessInfo(
+    // ... 原有字段
+    val lambdaExpressions: Set<LambdaInfo> = emptySet() // 新增
+)
+```
+
+#### 输出示例
+
+```json
+{
+  "calledMethods": [
+    {
+      "className": "java.util.List",
+      "methodName": "forEach",
+      "methodDescriptor": "(Ljava/util/function/Consumer;)V",
+      "callCount": 1,
+      "associatedLambdas": [
+        {
+          "className": "com.example.User",
+          "methodName": "lambda$updateProfile$0",
+          "methodDescriptor": "(Ljava/lang/String;)V",
+          "lambdaType": "java.util.function.Consumer"
+        }
+      ]
+    }
+  ],
+  "lambdaExpressions": [
+    {
+      "className": "com.example.User",
+      "methodName": "lambda$updateProfile$0",
+      "methodDescriptor": "(Ljava/lang/String;)V",
+      "lambdaType": "java.util.function.Consumer"
+    }
+  ]
+}
+```
+
+这个增强使得 pragma-ddd-analyzer 能够更好地分析现代 Java 代码中的函数式编程模式，为领域驱动设计提供更全面的代码分析支持。

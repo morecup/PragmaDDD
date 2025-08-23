@@ -8,6 +8,10 @@
 - 检测 `@AggregateRoot` 注解的类
 - **分析所有方法，包括没有属性访问或方法调用的方法**
 - **记录所有方法调用，不限于当前类的方法**
+- **Lambda 表达式分析和关联**
+  - 检测方法中的 Lambda 表达式
+  - 分析 Lambda 与方法调用的关联关系
+  - 识别函数式接口类型
 - 分析方法内的属性访问（读取和写入）
 - 支持直接字段访问和 getter/setter 方法调用
 - 支持分析单个类文件、JAR 文件或目录
@@ -106,13 +110,37 @@ java -jar analyzer.jar build/classes/kotlin/main build/classes/kotlin/test
             "className": "java.lang.System",
             "methodName": "currentTimeMillis",
             "methodDescriptor": "()J",
-            "callCount": 1
+            "callCount": 1,
+            "associatedLambdas": []
+          },
+          {
+            "className": "java.util.List",
+            "methodName": "forEach",
+            "methodDescriptor": "(Ljava/util/function/Consumer;)V",
+            "callCount": 1,
+            "associatedLambdas": [
+              {
+                "className": "com.example.User",
+                "methodName": "lambda$updateProfile$0",
+                "methodDescriptor": "(Ljava/lang/String;)V",
+                "lambdaType": "java.util.function.Consumer"
+              }
+            ]
           },
           {
             "className": "com.example.User",
             "methodName": "validate",
             "methodDescriptor": "()Z",
-            "callCount": 2
+            "callCount": 2,
+            "associatedLambdas": []
+          }
+        ],
+        "lambdaExpressions": [
+          {
+            "className": "com.example.User",
+            "methodName": "lambda$updateProfile$0",
+            "methodDescriptor": "(Ljava/lang/String;)V",
+            "lambdaType": "java.util.function.Consumer"
           }
         ]
       },
@@ -161,6 +189,12 @@ Pragma DDD 分析结果
    - 提供完整的方法描述符
    - 区分属性访问和方法调用
 
+4. **Lambda 表达式分析**
+   - **检测 invokedynamic 指令生成的 Lambda 表达式**
+   - 识别 Lambda 实现方法和函数式接口类型
+   - 关联 Lambda 与调用它们的方法
+   - 支持各种函数式接口（Consumer, Function, Predicate 等）
+
 ## 插件配置
 
 ### 扩展配置选项
@@ -189,6 +223,11 @@ pragmaDddAnalyzer {
 - **方法调用记录包含完整的类名，不仅限于当前类**
 
 ## 更新日志
+
+### v1.2.0
+- ✅ **新功能**: Lambda 表达式分析和关联
+- ✅ **增强**: 检测方法中的 Lambda 表达式并关联到方法调用
+- ✅ **改进**: 识别函数式接口类型和 Lambda 实现方法
 
 ### v1.1.0
 - ✅ **修复**: 现在会显示所有方法，包括没有属性访问和方法调用的方法

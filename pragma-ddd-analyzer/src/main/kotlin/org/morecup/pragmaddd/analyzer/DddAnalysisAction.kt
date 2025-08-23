@@ -1,6 +1,6 @@
 package org.morecup.pragmaddd.analyzer
 
-import org.gradle.api.Action  
+import org.gradle.api.Action
 import org.gradle.api.Task
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.FileCollection
@@ -158,6 +158,13 @@ open class DddAnalysisAction @Inject constructor(
      * 将此 Action 添加到任务中
      */
     fun addToTask(task: Task) {
+
+        val outputFile = getOutputFile(task).parentFile
+        outputFile.parentFile.mkdirs()
+
+        // 声明输出文件
+        task.outputs.dir(outputFile)
+
         // 使用 doLast 确保在编译完成后执行
         task.doLast("pragma-ddd-analysis", this)
         

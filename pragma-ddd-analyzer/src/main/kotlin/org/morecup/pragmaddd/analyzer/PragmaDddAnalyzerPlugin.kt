@@ -86,10 +86,8 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
             configureSourceSetDefaults(mainSourceSet, extension)
         }
 
-        // 配置各种语言插件的集成
+        // 只配置 Java 和 Kotlin 插件的集成，不处理其他语言
         project.plugins.withType(JavaPlugin::class.java) { configurePlugin("java", extension) }
-        project.plugins.withType(GroovyPlugin::class.java) { configurePlugin("groovy", extension) }
-        project.plugins.withType(ScalaPlugin::class.java) { configurePlugin("scala", extension) }
         project.plugins.withId("org.jetbrains.kotlin.jvm") { configurePlugin("kotlin", extension) }
     }
 

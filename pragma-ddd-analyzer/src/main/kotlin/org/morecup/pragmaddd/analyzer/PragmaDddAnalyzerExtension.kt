@@ -12,19 +12,13 @@ import org.gradle.api.provider.SetProperty
  * ```kotlin
  * pragmaDddAnalyzer {
  *     verbose.set(false)                                   // 不输出详细日志（推荐）
- *     outputFormat.set("JSON")                             // 输出格式：JSON 或 TXT
- *     outputFile.set("build/reports/ddd-analysis.json")    // 自定义输出文件
  *     classPaths.set(setOf("build/classes/kotlin/main"))   // 自定义类路径（通常不需要）
  * }
  * ```
+ *
+ * 注意：输出文件固定为 JSON 格式，路径固定为 build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
  */
 abstract class PragmaDddAnalyzerExtension {
-
-    /**
-     * 输出分析结果的文件路径
-     * 默认值：build/reports/pragma-ddd-analysis.json
-     */
-    abstract val outputFile: Property<String>
 
     /**
      * 要分析的类路径目录
@@ -40,20 +34,11 @@ abstract class PragmaDddAnalyzerExtension {
      */
     abstract val verbose: Property<Boolean>
 
-    /**
-     * 输出格式
-     * 支持的格式：JSON, TXT
-     * 默认值：JSON
-     */
-    abstract val outputFormat: Property<String>
-
 
 
     init {
-        // 设置默认值 - 将 JSON 文件生成到 resources 目录，这样会包含在 JAR 中
-        outputFile.convention("build/resources/main/META-INF/pragma-ddd-analysis.json")
+        // 设置默认值
         verbose.convention(false)
-        outputFormat.convention("JSON")
         classPaths.convention(emptySet())
     }
 }

@@ -2,7 +2,11 @@
 plugins {
     kotlin("jvm") version "2.1.0"
     `java-gradle-plugin`
+    `maven-publish`
 }
+
+group = "org.morecup.pragmaddd"
+version = "1.0.0-SNAPSHOT"
 
 repositories {
     mavenLocal()

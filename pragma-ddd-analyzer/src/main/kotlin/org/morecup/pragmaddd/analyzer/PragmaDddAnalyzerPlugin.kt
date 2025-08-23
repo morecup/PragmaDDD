@@ -2,6 +2,14 @@ package org.morecup.pragmaddd.analyzer
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
+import org.gradle.api.plugins.JavaBasePlugin
+import org.gradle.api.plugins.JavaPlugin
+import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.compile.AbstractCompile
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 /**
  * Pragma DDD 分析器插件
@@ -15,12 +23,18 @@ import org.gradle.api.Project
  * // 可选配置
  * pragmaDddAnalyzer {
  *     verbose.set(true)
- *     outputFormat.set("JSON") // JSON 或 TXT
- *     outputFile.set("build/reports/pragma-ddd-analysis.json")
  * }
  * ```
+ *
+ * 注意：
+ * - 输出文件固定为 JSON 格式
+ * - 输出路径固定为 build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+ * - 只处理 main SourceSet 的 compileJava 和 compileKotlin 任务
  */
 class PragmaDddAnalyzerPlugin : Plugin<Project> {
+
+    private lateinit var project: Project
+    private lateinit var sourceSets: SourceSetContainer
 
     companion object {
         // 获取插件版本号
@@ -56,40 +70,82 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
     }
 
     override fun apply(project: Project) {
+        this.project = project
+        
+        // 确保 Java 插件已应用
+        project.plugins.apply(JavaBasePlugin::class.java)
+        val javaPluginExtension = project.extensions.getByType(JavaPluginExtension::class.java)
+        sourceSets = javaPluginExtension.sourceSets
+        
         // 创建扩展配置
         val extension = project.extensions.create("pragmaDddAnalyzer", PragmaDddAnalyzerExtension::class.java)
 
-        // 注册分析任务
-        val analyzeTask = project.tasks.register("analyzeDddClasses", AnalyzeDddClassesTask::class.java) { task ->
-            task.group = "pragma-ddd"
-            task.description = "分析 @AggregateRoot 注解的类的属性访问情况"
-            task.extension = extension
+        // 只为 main SourceSet 配置分析任务，不处理 test 相关任务
+        val mainSourceSet = sourceSets.findByName("main")
+        if (mainSourceSet != null) {
+            configureSourceSetDefaults(mainSourceSet, extension)
         }
 
-        // 自动集成到构建流程中
-        project.afterEvaluate {
-            configureTaskDependencies(project, analyzeTask.get())
-        }
+        // 配置各种语言插件的集成
+        project.plugins.withType(JavaPlugin::class.java) { configurePlugin("java", extension) }
+        project.plugins.withType(GroovyPlugin::class.java) { configurePlugin("groovy", extension) }
+        project.plugins.withType(ScalaPlugin::class.java) { configurePlugin("scala", extension) }
+        project.plugins.withId("org.jetbrains.kotlin.jvm") { configurePlugin("kotlin", extension) }
     }
 
-    private fun configureTaskDependencies(project: Project, analyzeTask: AnalyzeDddClassesTask) {
-        // 查找编译任务
-        val compileKotlinTask = project.tasks.findByName("compileKotlin")
-        val compileJavaTask = project.tasks.findByName("compileJava")
-        val processResourcesTask = project.tasks.findByName("processResources")
-
-        // 分析任务依赖于编译任务
-        compileKotlinTask?.let { analyzeTask.dependsOn(it) }
-        compileJavaTask?.let { analyzeTask.dependsOn(it) }
-
-        // 让 processResources 任务依赖分析任务，确保 JSON 文件在资源处理前生成
-        processResourcesTask?.dependsOn(analyzeTask)
-
-        // 让 jar 任务也依赖分析任务，确保打包前完成分析
-        project.tasks.findByName("jar")?.dependsOn(analyzeTask)
-
-        // 如果有测试任务，也让它依赖分析任务
-        project.tasks.findByName("test")?.dependsOn(analyzeTask)
+    private fun configureSourceSetDefaults(sourceSet: SourceSet, extension: PragmaDddAnalyzerExtension) {
+        // 为每个 SourceSet 创建对应的分析任务
+        val taskName = if (sourceSet.name == "main") "analyzeDddClasses" else "analyze${sourceSet.name.replaceFirstChar { it.uppercase() }}DddClasses"
+        
+        project.tasks.register(taskName, AnalyzeDddClassesTask::class.java) { task ->
+            task.group = "pragma-ddd"
+            task.description = "分析 ${sourceSet.name} SourceSet 中 @AggregateRoot 注解的类的属性访问情况"
+            task.extension = extension
+            task.sourceSetName = sourceSet.name
+        }
+    }
+    
+    private fun configurePlugin(language: String, extension: PragmaDddAnalyzerExtension) {
+        // 只处理 main SourceSet
+        val mainSourceSet = sourceSets.findByName("main")
+        if (mainSourceSet != null) {
+            val taskName = "analyzeDddClasses"
+            
+            // 获取对应语言的编译任务
+            val compileTaskName = mainSourceSet.getCompileTaskName(language)
+            project.tasks.named(compileTaskName) { compileTask ->
+                // 获取分析任务
+                val analyzeTask = project.tasks.named(taskName, AnalyzeDddClassesTask::class.java).get()
+                enhanceWithAnalysisAction(compileTask, analyzeTask)
+            }
+        }
+    }
+    
+    private fun enhanceWithAnalysisAction(compileTask: Task, analyzeTask: AnalyzeDddClassesTask) {
+        // 创建 DDD 分析 Action
+        val analysisAction = project.objects.newInstance(DddAnalysisAction::class.java)
+        
+        // 配置分析 Action
+        analysisAction.extension = analyzeTask.extension
+        analysisAction.sourceSetName = analyzeTask.sourceSetName
+        
+        // 获取编译输出目录
+        when (compileTask) {
+            is AbstractCompile -> {
+                analysisAction.additionalInputPath.from(compileTask.destinationDirectory)
+            }
+            is KotlinJvmCompile -> {
+                analysisAction.additionalInputPath.from(compileTask.destinationDirectory)
+            }
+        }
+        
+        // 将分析 Action 添加到编译任务
+        analysisAction.addToTask(compileTask)
+        
+        // 让其他任务依赖编译任务（间接依赖分析）
+        // 但不要让分析任务直接依赖编译任务，避免循环依赖
+        
+        println("[Pragma DDD] 已为编译任务 ${compileTask.name} 配置 DDD 分析")
     }
 
 

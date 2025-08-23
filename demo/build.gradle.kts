@@ -17,5 +17,4 @@ dependencies {
 // 可选的插件配置
 pragmaDddAnalyzer {
     verbose.set(true)  // 启用详细输出
-    outputFormat.set("JSON")
 }

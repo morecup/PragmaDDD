@@ -63,19 +63,30 @@ class MethodAnalyzerImpl(
             
             // Extract method calls and property accesses using dedicated methods (if enabled)
             System.err.println("MethodAnalyzer: analyzeMethod for ${irFunction.name}, enableMethodAnalysis = $enableMethodAnalysis")
-            val methodCalls = if (enableMethodAnalysis) extractMethodCalls(irFunction) else emptyList()
+            val methodCalls = if (enableMethodAnalysis) {
+                val calls = extractMethodCalls(irFunction)
+                System.err.println("MethodAnalyzer: Before deduplication: ${calls.size} calls")
+                calls
+            } else emptyList()
             val propertyAccesses = if (enableMethodAnalysis) {
-                val accesses = extractPropertyAccess(irFunction).toMutableList()
+                val accesses = extractPropertyAccessWithoutMethodCalls(irFunction).toMutableList()
+                
+                // Add simple getter/setter pattern detection
+                val simplePatternAccesses = detectSimpleGetterSetterPatterns(irFunction)
+                accesses.addAll(simplePatternAccesses)
                 
                 // Also extract property accesses from method calls
+                System.err.println("MethodAnalyzer: Processing ${methodCalls.size} method calls for property access extraction")
                 methodCalls.forEach { methodCall ->
                     val methodName = methodCall.targetMethod
                     val receiverType = methodCall.receiverType
+                    System.err.println("MethodAnalyzer: Checking method call: $methodName")
                     
                     when {
                         // Kotlin setter pattern: <set-propertyName>
                         methodName.startsWith("<set-") && methodName.endsWith(">") -> {
                             val propertyName = methodName.removePrefix("<set-").removeSuffix(">")
+                            System.err.println("MethodAnalyzer: Found setter pattern for property: $propertyName")
                             accesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
@@ -88,6 +99,7 @@ class MethodAnalyzerImpl(
                         // Kotlin getter pattern: <get-propertyName>
                         methodName.startsWith("<get-") && methodName.endsWith(">") -> {
                             val propertyName = methodName.removePrefix("<get-").removeSuffix(">")
+                            System.err.println("MethodAnalyzer: Found getter pattern for property: $propertyName")
                             accesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
@@ -98,6 +110,8 @@ class MethodAnalyzerImpl(
                         }
                     }
                 }
+                
+                System.err.println("MethodAnalyzer: Final property accesses count: ${accesses.size}")
                 
                 accesses
             } else emptyList()
@@ -110,8 +124,12 @@ class MethodAnalyzerImpl(
                 parameters = parameters,
                 returnType = returnType,
                 isPrivate = isPrivate,
-                methodCalls = methodCalls,
-                propertyAccesses = propertyAccesses,
+                methodCalls = methodCalls.distinctBy { "${it.targetMethod}@${it.receiverType}@${it.parameters.joinToString(",")}" }.also { 
+                    System.err.println("MethodAnalyzer: After deduplication: ${it.size} calls for method $methodName")
+                }, // Remove duplicates as a safety net
+                propertyAccesses = propertyAccesses.distinctBy { "${it.propertyName}@${it.accessType}@${it.ownerClass}" }.also {
+                    System.err.println("MethodAnalyzer: Final property accesses after deduplication: ${it.size} for method $methodName")
+                }, // Use the correct variable name and add deduplication
                 documentation = documentation,
                 annotations = annotations
             )
@@ -159,6 +177,13 @@ class MethodAnalyzerImpl(
      * Extracts property access patterns from method body using dedicated PropertyAnalyzer
      */
     override fun extractPropertyAccess(irFunction: IrSimpleFunction): List<PropertyAccessMetadata> {
+        return extractPropertyAccessWithoutMethodCalls(irFunction)
+    }
+    
+    /**
+     * Extracts property access patterns without duplicating method call extraction
+     */
+    private fun extractPropertyAccessWithoutMethodCalls(irFunction: IrSimpleFunction): List<PropertyAccessMetadata> {
         return try {
             // First try the dedicated PropertyAnalyzer
             System.err.println("MethodAnalyzer: Calling PropertyAnalyzer for method ${irFunction.name}")
@@ -169,66 +194,7 @@ class MethodAnalyzerImpl(
             val inferredAccesses = inferPropertyAccessFromMethodPattern(irFunction)
             propertyAccesses.addAll(inferredAccesses)
             
-            // Also extract property accesses from method calls as a fallback
-            // Use a separate collector to avoid recursion
-            val methodCallsCollector = MethodCallsCollector(errorReporter, irFunction.name.asString())
-            irFunction.body?.acceptChildrenVoid(methodCallsCollector)
-            val methodCalls = methodCallsCollector.methodCalls
-            
-            methodCalls.forEach { methodCall ->
-                val methodName = methodCall.targetMethod
-                val receiverType = methodCall.receiverType
-                
-                when {
-                    // Kotlin setter pattern: <set-propertyName>
-                    methodName.startsWith("<set-") && methodName.endsWith(">") -> {
-                        val propertyName = methodName.removePrefix("<set-").removeSuffix(">")
-                        propertyAccesses.add(
-                            PropertyAccessMetadata(
-                                propertyName = propertyName,
-                                accessType = PropertyAccessType.SET,
-                                ownerClass = receiverType
-                            )
-                        )
-                    }
-                    
-                    // Kotlin getter pattern: <get-propertyName>
-                    methodName.startsWith("<get-") && methodName.endsWith(">") -> {
-                        val propertyName = methodName.removePrefix("<get-").removeSuffix(">")
-                        propertyAccesses.add(
-                            PropertyAccessMetadata(
-                                propertyName = propertyName,
-                                accessType = PropertyAccessType.GET,
-                                ownerClass = receiverType
-                            )
-                        )
-                    }
-                    
-                    // Java-style getter: getPropertyName()
-                    methodName.startsWith("get") && methodCall.parameters.isEmpty() -> {
-                        val propertyName = methodName.removePrefix("get").replaceFirstChar { it.lowercase() }
-                        propertyAccesses.add(
-                            PropertyAccessMetadata(
-                                propertyName = propertyName,
-                                accessType = PropertyAccessType.GET,
-                                ownerClass = receiverType
-                            )
-                        )
-                    }
-                    
-                    // Java-style setter: setPropertyName(value)
-                    methodName.startsWith("set") && methodCall.parameters.size == 1 -> {
-                        val propertyName = methodName.removePrefix("set").replaceFirstChar { it.lowercase() }
-                        propertyAccesses.add(
-                            PropertyAccessMetadata(
-                                propertyName = propertyName,
-                                accessType = PropertyAccessType.SET,
-                                ownerClass = receiverType
-                            )
-                        )
-                    }
-                }
-            }
+            // Note: Method call extraction is now handled separately to avoid duplication
             
             propertyAccesses
         } catch (e: Exception) {
@@ -337,11 +303,13 @@ class MethodAnalyzerImpl(
         private val errorReporter: ErrorReporter,
         private val methodName: String
     ) : IrElementVisitorVoid {
-        val methodCalls = mutableListOf<MethodCallMetadata>()
+        private val processedCalls = mutableSetOf<String>()
+        private val methodCallsList = mutableListOf<MethodCallMetadata>()
+        val methodCalls: List<MethodCallMetadata> get() = methodCallsList
+        
+
         
         override fun visitCall(expression: IrCall) {
-            super.visitCall(expression)
-            
             try {
                 val targetMethod = expression.symbol.owner.name.asString()
                 val receiverType = expression.dispatchReceiver?.type?.getClass()?.fqNameWhenAvailable?.asString()
@@ -351,13 +319,20 @@ class MethodAnalyzerImpl(
                     expression.getValueArgument(index)?.type?.getClass()?.name?.asString()
                 }
                 
-                methodCalls.add(
-                    MethodCallMetadata(
-                        targetMethod = targetMethod,
-                        receiverType = receiverType,
-                        parameters = parameters
+                // Create a unique key for this method call to avoid duplicates
+                val callKey = "$targetMethod@$receiverType(${parameters.joinToString(",")})"
+                
+                if (!processedCalls.contains(callKey)) {
+                    processedCalls.add(callKey)
+                    methodCallsList.add(
+                        MethodCallMetadata(
+                            targetMethod = targetMethod,
+                            receiverType = receiverType,
+                            parameters = parameters
+                        )
                     )
-                )
+
+                }
             } catch (e: Exception) {
                 errorReporter.reportWarning(
                     AnalysisWarning(
@@ -366,40 +341,15 @@ class MethodAnalyzerImpl(
                     )
                 )
             }
+            
+            // Continue traversing child nodes
+            super.visitCall(expression)
         }
         
-        override fun visitFunctionAccess(expression: IrFunctionAccessExpression) {
-            super.visitFunctionAccess(expression)
-            
-            try {
-                val targetMethod = expression.symbol.owner.name.asString()
-                val receiverType = expression.dispatchReceiver?.type?.getClass()?.fqNameWhenAvailable?.asString()
-                    ?: expression.extensionReceiver?.type?.getClass()?.fqNameWhenAvailable?.asString()
-                
-                val parameters = (0 until expression.valueArgumentsCount).mapNotNull { index ->
-                    expression.getValueArgument(index)?.type?.getClass()?.name?.asString()
-                }
-                
-                methodCalls.add(
-                    MethodCallMetadata(
-                        targetMethod = targetMethod,
-                        receiverType = receiverType,
-                        parameters = parameters
-                    )
-                )
-            } catch (e: Exception) {
-                errorReporter.reportWarning(
-                    AnalysisWarning(
-                        message = "Error processing function access: ${e.message}",
-                        elementName = methodName
-                    )
-                )
-            }
-        }
+        // Remove visitFunctionAccess to avoid duplicate method call detection
+        // visitCall already handles IrCall expressions which include function calls
         
         override fun visitConstructorCall(expression: IrConstructorCall) {
-            super.visitConstructorCall(expression)
-            
             try {
                 val targetMethod = "<init>"
                 val receiverType = expression.type.getClass()?.fqNameWhenAvailable?.asString()
@@ -408,13 +358,19 @@ class MethodAnalyzerImpl(
                     expression.getValueArgument(index)?.type?.getClass()?.name?.asString()
                 }
                 
-                methodCalls.add(
-                    MethodCallMetadata(
-                        targetMethod = targetMethod,
-                        receiverType = receiverType,
-                        parameters = parameters
+                // Create a unique key for this constructor call to avoid duplicates
+                val callKey = "$targetMethod@$receiverType(${parameters.joinToString(",")})"
+                
+                if (!processedCalls.contains(callKey)) {
+                    processedCalls.add(callKey)
+                    methodCallsList.add(
+                        MethodCallMetadata(
+                            targetMethod = targetMethod,
+                            receiverType = receiverType,
+                            parameters = parameters
+                        )
                     )
-                )
+                }
             } catch (e: Exception) {
                 errorReporter.reportWarning(
                     AnalysisWarning(
@@ -423,6 +379,9 @@ class MethodAnalyzerImpl(
                     )
                 )
             }
+            
+            // Continue traversing child nodes
+            super.visitConstructorCall(expression)
         }
     }
     
@@ -493,6 +452,57 @@ class MethodAnalyzerImpl(
                 else -> false
             }
         }
+    }
+    
+    /**
+     * Simple detection of getter/setter patterns based on method name and class properties
+     */
+    private fun detectSimpleGetterSetterPatterns(irFunction: IrSimpleFunction): List<PropertyAccessMetadata> {
+        val methodName = irFunction.name.asString()
+        val accesses = mutableListOf<PropertyAccessMetadata>()
+        
+        val ownerClass = irFunction.parent.let { parent ->
+            if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
+                parent.fqNameWhenAvailable?.asString()
+            } else null
+        }
+        
+        val parentClass = irFunction.parent as? org.jetbrains.kotlin.ir.declarations.IrClass
+        if (parentClass != null) {
+            // Get all properties in the class
+            val classProperties = parentClass.declarations.filterIsInstance<org.jetbrains.kotlin.ir.declarations.IrProperty>()
+                .map { it.name.asString() }.toSet()
+            
+            // Check for getter pattern: getXxx() -> xxx property
+            if (methodName.startsWith("get") && irFunction.valueParameters.isEmpty()) {
+                val propertyName = methodName.removePrefix("get").replaceFirstChar { it.lowercase() }
+                if (classProperties.contains(propertyName)) {
+                    accesses.add(
+                        PropertyAccessMetadata(
+                            propertyName = propertyName,
+                            accessType = PropertyAccessType.GET,
+                            ownerClass = ownerClass
+                        )
+                    )
+                }
+            }
+            
+            // Check for setter pattern: setXxx(value) -> xxx property
+            if (methodName.startsWith("set") && irFunction.valueParameters.size == 1) {
+                val propertyName = methodName.removePrefix("set").replaceFirstChar { it.lowercase() }
+                if (classProperties.contains(propertyName)) {
+                    accesses.add(
+                        PropertyAccessMetadata(
+                            propertyName = propertyName,
+                            accessType = PropertyAccessType.SET,
+                            ownerClass = ownerClass
+                        )
+                    )
+                }
+            }
+        }
+        
+        return accesses
     }
     
 

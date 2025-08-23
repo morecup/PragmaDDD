@@ -13,6 +13,14 @@ class DddAnalysisCommandLineProcessor : CommandLineProcessor {
     init {
         println("DDD Analyzer: CommandLineProcessor initialized")
         System.err.println("DDD Analyzer: CommandLineProcessor initialized")
+        
+        // Write to a file to ensure we can detect if this is called
+        try {
+            val debugFile = java.io.File("commandline-processor-debug.log")
+            debugFile.appendText("CommandLineProcessor initialized at ${System.currentTimeMillis()}\n")
+        } catch (e: Exception) {
+            // Ignore file write errors
+        }
     }
     
     // Override the deprecated method to delegate to the new one
@@ -97,6 +105,9 @@ class DddAnalysisCommandLineProcessor : CommandLineProcessor {
         value: String,
         configuration: CompilerConfiguration
     ) {
+        println("DDD Analyzer: CommandLineProcessor.processOption() called - option: ${option.optionName}, value: $value")
+        System.err.println("DDD Analyzer: CommandLineProcessor.processOption() called - option: ${option.optionName}, value: $value")
+        
         when (option.optionName) {
             OUTPUT_DIRECTORY_OPTION -> {
                 configuration.put(OUTPUT_DIRECTORY_KEY, value)

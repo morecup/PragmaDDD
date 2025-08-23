@@ -18,6 +18,14 @@ class DddAnalysisCompilerPluginRegistrar : CompilerPluginRegistrar() {
         // Add initialization logging
         println("DDD Analyzer: ComponentRegistrar initialized")
         System.err.println("DDD Analyzer: ComponentRegistrar initialized")
+        
+        // Write to a file to ensure we can detect if this is called
+        try {
+            val debugFile = java.io.File("component-registrar-debug.log")
+            debugFile.appendText("ComponentRegistrar initialized at ${System.currentTimeMillis()}\n")
+        } catch (e: Exception) {
+            // Ignore file write errors
+        }
     }
     
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {

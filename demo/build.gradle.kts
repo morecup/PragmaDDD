@@ -1,6 +1,6 @@
 plugins {
     id("kotlin-jvm")
-    id("org.morecup.pragmaddd.pragma-ddd-analyzer")
+    id("org.morecup.pragmaddd.analyzer")
 }
 
 repositories {

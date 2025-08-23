@@ -45,7 +45,7 @@ dependencies {
 gradlePlugin {
     plugins {
         create("pragmaDddAnalyzer") {
-            id = "org.morecup.pragmaddd.pragma-ddd-analyzer"
+            id = "org.morecup.pragmaddd.analyzer"
             implementationClass = "org.morecup.pragmaddd.analyzer.PragmaDddAnalyzerPlugin"
             displayName = "Pragma DDD Analyzer"
             description = "Analyzes DDD aggregate root classes for property access patterns"

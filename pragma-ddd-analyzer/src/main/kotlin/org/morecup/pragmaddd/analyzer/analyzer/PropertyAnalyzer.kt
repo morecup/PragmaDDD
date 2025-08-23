@@ -361,18 +361,8 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             )
                         }
                         
-                        // Kotlin property getter (no "get" prefix, no parameters)
-                        expression.valueArgumentsCount == 0 && !methodName.startsWith("get") && !methodName.startsWith("set") && !methodName.startsWith("<") -> {
-                            // This might be a Kotlin property getter
-                            println("PropertyAnalyzer: Found potential Kotlin property getter - property: $methodName")
-                            propertyAccesses.add(
-                                PropertyAccessMetadata(
-                                    propertyName = methodName,
-                                    accessType = PropertyAccessType.GET,
-                                    ownerClass = receiverType
-                                )
-                            )
-                        }
+                        // Skip this overly broad rule that incorrectly identifies method calls as property access
+                        // We'll rely on correspondingPropertySymbol and explicit getter/setter patterns instead
                         
                         else -> {
                             println("PropertyAnalyzer: Method '$methodName' does not match any property access pattern")
@@ -380,11 +370,51 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     }
                 }
                 
-                // Handle method chains - if the receiver is another method call
+                // Handle method chains and property access through receivers
                 expression.dispatchReceiver?.let { receiver ->
-                    if (receiver is IrCall) {
-                        // This is a method chain, analyze the receiver call for property access
-                        receiver.acceptChildrenVoid(this)
+                    System.err.println("PropertyAnalyzer: Found dispatchReceiver of type: ${receiver::class.simpleName}")
+                    
+                    when (receiver) {
+                        is IrCall -> {
+                            // This is a method chain, analyze the receiver call for property access
+                            System.err.println("PropertyAnalyzer: Receiver is IrCall: ${receiver.symbol.owner.name}")
+                            receiver.acceptChildrenVoid(this)
+                        }
+                        is IrGetField -> {
+                            // Direct property access as receiver (e.g., items.add())
+                            val propertyName = receiver.symbol.owner.name.asString()
+                            val ownerClass = receiver.symbol.owner.parent.let { parent ->
+                                if (parent is org.jetbrains.kotlin.ir.declarations.IrClass) {
+                                    parent.fqNameWhenAvailable?.asString()
+                                } else null
+                            }
+                            
+                            System.err.println("PropertyAnalyzer: Found property access as receiver - property: $propertyName, owner: $ownerClass")
+                            
+                            propertyAccesses.add(
+                                PropertyAccessMetadata(
+                                    propertyName = propertyName,
+                                    accessType = PropertyAccessType.GET,
+                                    ownerClass = ownerClass
+                                )
+                            )
+                        }
+                        is IrGetValue -> {
+                            // This might be a property access through a getter method
+                            val symbol = receiver.symbol
+                            val valueDeclaration = symbol.owner
+                            System.err.println("PropertyAnalyzer: Receiver is IrGetValue: ${valueDeclaration.name}")
+                            
+                            // Check if this is accessing a property through 'this'
+                            if (valueDeclaration is org.jetbrains.kotlin.ir.declarations.IrValueParameter && 
+                                valueDeclaration.name.asString() == "<this>") {
+                                // This might be accessing a property on 'this', but we need more context
+                                System.err.println("PropertyAnalyzer: Receiver accesses 'this' - method: $methodName")
+                            }
+                        }
+                        else -> {
+                            System.err.println("PropertyAnalyzer: Unknown receiver type: ${receiver::class.simpleName}")
+                        }
                     }
                 }
                 

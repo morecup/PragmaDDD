@@ -68,6 +68,14 @@ class Order(
     }
     
     /**
+     * 简单的属性访问测试
+     */
+    fun simpleTest() {
+        val currentStatus = status  // 应该检测到 status 的读取
+        status = OrderStatus.SHIPPED  // 应该检测到 status 的写入
+    }
+    
+    /**
      * 发货 - 访问和修改状态
      */
     fun ship() {

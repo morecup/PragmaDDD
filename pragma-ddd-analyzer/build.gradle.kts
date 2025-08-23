@@ -43,36 +43,3 @@ gradlePlugin {
 tasks.test {
     useJUnitPlatform()
 }
-
-// 生成版本属性文件
-val generateVersionProperties by tasks.registering {
-    val outputDir = file("src/main/resources")
-    outputs.dir(outputDir)
-    
-    doLast {
-        val versionFile = file("src/main/resources/pragma-ddd-analyzer-version.properties")
-        versionFile.parentFile.mkdirs()
-        versionFile.writeText("""
-            version=${project.version}
-            name=${project.name}
-            group=${project.group}
-        """.trimIndent())
-    }
-}
-
-// 确保在编译前生成版本文件
-tasks.processResources {
-    dependsOn(generateVersionProperties)
-}
-
-// 确保版本信息包含在 JAR 的 MANIFEST.MF 中
-tasks.jar {
-    dependsOn(generateVersionProperties)
-    manifest {
-        attributes(
-            "Implementation-Title" to "Pragma DDD Analyzer",
-            "Implementation-Version" to project.version,
-            "Implementation-Vendor" to "MoreCup"
-        )
-    }
-}

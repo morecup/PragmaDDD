@@ -32,8 +32,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
  * 注意：
  * - 分析会在编译时自动执行，无需手动运行任务
  * - 输出文件固定为 JSON 格式
- * - 输出路径固定为 build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
- * - 只处理 main SourceSet 的 compileJava 和 compileKotlin 任务
+ * - main源集输出路径：build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+ * - test源集输出路径：build/generated/pragmaddd/test/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json
+ * - 处理 main 和 test SourceSet 的 compileJava 和 compileKotlin 任务
  */
 class PragmaDddAnalyzerPlugin : Plugin<Project> {
 
@@ -60,13 +61,15 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
     }
     
     private fun configurePlugin(language: String, extension: PragmaDddAnalyzerExtension) {
-        // 只处理 main SourceSet
-        val mainSourceSet = sourceSets.findByName("main")
-        if (mainSourceSet != null) {
-            // 获取对应语言的编译任务
-            val compileTaskName = mainSourceSet.getCompileTaskName(language)
-            project.tasks.named(compileTaskName) { compileTask ->
-                enhanceWithAnalysisAction(compileTask, extension, mainSourceSet.name)
+        // 处理 main 和 test SourceSet
+        listOf("main", "test").forEach { sourceSetName ->
+            val sourceSet = sourceSets.findByName(sourceSetName)
+            if (sourceSet != null) {
+                // 获取对应语言的编译任务
+                val compileTaskName = sourceSet.getCompileTaskName(language)
+                project.tasks.named(compileTaskName) { compileTask ->
+                    enhanceWithAnalysisAction(compileTask, extension, sourceSet.name)
+                }
             }
         }
     }
@@ -78,10 +81,18 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
             // 基于插件存在性来添加编译依赖
             project.plugins.withType(JavaPlugin::class.java) {
                 processResources.dependsOn("compileJava")
+                // 如果存在test源集，也添加testCompileJava依赖
+                if (processResources.name == "processTestResources") {
+                    processResources.dependsOn("compileTestJava")
+                }
             }
             
             project.plugins.withId("org.jetbrains.kotlin.jvm") {
                 processResources.dependsOn("compileKotlin")
+                // 如果存在test源集，也添加compileTestKotlin依赖
+                if (processResources.name == "processTestResources") {
+                    processResources.dependsOn("compileTestKotlin")
+                }
             }
         }
     }
@@ -107,7 +118,7 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         // 将分析 Action 添加到编译任务
         analysisAction.addToTask(compileTask)
         
-        println("[Pragma DDD] 已为编译任务 ${compileTask.name} 配置 DDD 分析")
+        println("[Pragma DDD] 已为编译任务 ${compileTask.name} (${sourceSetName}源集) 配置 DDD 分析")
     }
 
 

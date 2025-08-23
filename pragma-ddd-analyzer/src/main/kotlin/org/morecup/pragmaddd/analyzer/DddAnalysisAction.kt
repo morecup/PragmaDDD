@@ -63,11 +63,7 @@ open class DddAnalysisAction @Inject constructor(
      * 输出文件 - 固定路径和格式
      */
     fun getOutputFile(task: Task): File {
-        val defaultPath = if (sourceSetName == "main") {
-            "build/generated/pragmaddd/main/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json"
-        } else {
-            "build/generated/pragmaddd/$sourceSetName/resources/META-INF/pragma-ddd-analyzer/domain-analyzer-$sourceSetName.json"
-        }
+        val defaultPath = "build/generated/pragmaddd/$sourceSetName/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json"
         return task.project.file(defaultPath)
     }
 

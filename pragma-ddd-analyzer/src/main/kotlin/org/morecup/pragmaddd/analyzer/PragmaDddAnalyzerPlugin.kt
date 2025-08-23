@@ -60,10 +60,6 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         project.plugins.withType(JavaPlugin::class.java) { configurePlugin("java", extension) }
         project.plugins.withId("org.jetbrains.kotlin.jvm") { configurePlugin("kotlin", extension) }
     }
-
-    private fun configureSourceSetDefaults(sourceSet: SourceSet, extension: PragmaDddAnalyzerExtension) {
-        // 不再需要创建分析任务，直接通过 DddAnalysisAction 处理
-    }
     
     private fun configurePlugin(language: String, extension: PragmaDddAnalyzerExtension) {
         // 只处理 main SourceSet

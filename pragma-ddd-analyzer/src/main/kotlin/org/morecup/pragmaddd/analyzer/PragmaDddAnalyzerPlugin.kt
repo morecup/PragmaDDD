@@ -40,39 +40,6 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
     private lateinit var project: Project
     private lateinit var sourceSets: SourceSetContainer
 
-    companion object {
-        // 获取插件版本号
-        private fun getPluginVersion(): String {
-            return try {
-                // 方法1: 尝试从 MANIFEST.MF 中读取版本
-                val clazz = PragmaDddAnalyzerPlugin::class.java
-                val packageInfo = clazz.`package`
-                val manifestVersion = packageInfo?.implementationVersion
-
-                if (!manifestVersion.isNullOrBlank()) {
-                    return manifestVersion
-                }
-
-                // 方法2: 尝试从资源文件中读取版本
-                val versionResource = clazz.getResourceAsStream("/pragma-ddd-analyzer-version.properties")
-                if (versionResource != null) {
-                    val props = java.util.Properties()
-                    props.load(versionResource)
-                    val resourceVersion = props.getProperty("version")
-                    if (!resourceVersion.isNullOrBlank()) {
-                        return resourceVersion
-                    }
-                }
-
-                // 方法3: 使用默认版本
-                "1.0.0"
-            } catch (e: Exception) {
-                // 如果无法获取版本，使用默认版本
-                "1.0.0"
-            }
-        }
-    }
-
     override fun apply(project: Project) {
         this.project = project
 
@@ -88,12 +55,6 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         
         // 创建扩展配置
         val extension = project.extensions.create("pragmaDddAnalyzer", PragmaDddAnalyzerExtension::class.java)
-
-        // 只为 main SourceSet 配置分析任务，不处理 test 相关任务
-        val mainSourceSet = sourceSets.findByName("main")
-        if (mainSourceSet != null) {
-            configureSourceSetDefaults(mainSourceSet, extension)
-        }
 
         // 只配置 Java 和 Kotlin 插件的集成，不处理其他语言
         project.plugins.withType(JavaPlugin::class.java) { configurePlugin("java", extension) }

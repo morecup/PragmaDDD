@@ -5,6 +5,8 @@ import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.TestOnly
 import org.morecup.pragmaddd.core.annotation.AggregateRoot
 import org.morecup.pragmaddd.core.annotation.DomainEntity
+import org.morecup.pragmaddd.core.annotation.OrmField
+import org.morecup.pragmaddd.core.annotation.OrmObject
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -12,6 +14,8 @@ import java.time.LocalDateTime
  * 订单聚合根示例
  */
 @AggregateRoot
+@Deprecated("This is a test annotation with parameters", level = DeprecationLevel.WARNING)
+@OrmObject(["order"])
 open class Order(
     /**
      * test orderIds 属性的记录
@@ -20,15 +24,16 @@ open class Order(
     private var orderIds: MutableList<String>,
     @Name("customerId")
     open var customerId: String,
+    @OrmField("totalAmount")
     private var totalAmount: BigDecimal,
     private var product: Product,
 ) {
 
-//    fun testLambda() {
-//        println(customerId)
-//        val aaa = orderIds.removeIf { c -> c == "123"&&totalAmount == BigDecimal(123) }
-//        println(aaa)
-//    }
+    fun testLambda() {
+        println(customerId)
+        val aaa = orderIds.removeIf { c -> c == "123"&&totalAmount == BigDecimal(123) }
+        println(aaa)
+    }
 //
 //    fun testLambda2(){
 //        orderIds.removeIf {

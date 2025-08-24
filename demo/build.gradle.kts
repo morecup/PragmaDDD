@@ -12,6 +12,14 @@ repositories {
 dependencies {
     implementation(project(":pragma-ddd-core"))
 //    aspect(project(":pragma-ddd-aspect"))
+
+    // 测试依赖
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("org.assertj:assertj-core:3.24.2")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 // 可选的插件配置

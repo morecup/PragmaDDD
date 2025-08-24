@@ -84,29 +84,36 @@ open class DddAnalysisAction @Inject constructor(
                 return
             }
 
-            // 执行分析
-            val analyzer = DomainObjectAnalyzer()
-            val results = mutableListOf<ClassAnalysisResult>()
+            // 执行增强分析（结合原有功能和新的详细信息）
+            val enhancedAnalyzer = EnhancedDomainObjectAnalyzer()
+            val projectDir = task.project.projectDir
+
+            // 合并所有编译目录进行分析
+            val allResults = mutableListOf<org.morecup.pragmaddd.analyzer.model.DetailedClassInfo>()
 
             compiledClasses.forEach { dir ->
                 if (dir.exists() && dir.isDirectory) {
-                    task.logger.debug("[Pragma DDD] 分析目录: ${dir.absolutePath}")
-                    val dirResults = analyzer.analyzeDirectory(dir)
-                    results.addAll(dirResults)
-                    task.logger.info("[Pragma DDD] 在目录 ${dir.name} 中找到 ${dirResults.size} 个 DDD 类")
+                    task.logger.debug("[Pragma DDD] 增强分析目录: ${dir.absolutePath}")
+                    val enhancedResult = enhancedAnalyzer.analyzeDirectory(dir, projectDir, sourceSetName)
+                    allResults.addAll(enhancedResult.classes)
+                    task.logger.info("[Pragma DDD] 在目录 ${dir.name} 中找到 ${enhancedResult.classes.size} 个 DDD 类")
                 }
             }
 
-            // 输出结果
-            outputResults(results, task)
+            // 创建最终的增强分析结果
+            val finalResult = org.morecup.pragmaddd.analyzer.model.DetailedAnalysisResult(
+                sourceSetName = sourceSetName,
+                classes = allResults,
+                summary = createDetailedSummary(allResults)
+            )
 
-            // 统计各种 DDD 类型的数量
-            val aggregateRoots = results.count { it.domainObjectType == DomainObjectType.AGGREGATE_ROOT }
-            val domainEntities = results.count { it.domainObjectType == DomainObjectType.DOMAIN_ENTITY }
-            val valueObjects = results.count { it.domainObjectType == DomainObjectType.VALUE_OBJECT }
-            
-            task.logger.info("[Pragma DDD] DDD 分析完成，找到 ${results.size} 个 DDD 类：" +
-                " AggregateRoot($aggregateRoots), DomainEntity($domainEntities), ValueObject($valueObjects)")
+            // 输出增强结果
+            outputDetailedResults(finalResult, task)
+
+            task.logger.info("[Pragma DDD] 增强 DDD 分析完成，找到 ${finalResult.summary.totalClasses} 个 DDD 类：" +
+                " AggregateRoot(${finalResult.summary.aggregateRootCount}), " +
+                "DomainEntity(${finalResult.summary.domainEntityCount}), " +
+                "ValueObject(${finalResult.summary.valueObjectCount})")
 
         } catch (e: Exception) {
             task.logger.error("[Pragma DDD] DDD 分析失败: ${e.message}", e)
@@ -137,19 +144,35 @@ open class DddAnalysisAction @Inject constructor(
     }
 
     /**
-     * 输出分析结果 - 固定为JSON格式
+     * 输出详细分析结果
      */
-    private fun outputResults(results: List<ClassAnalysisResult>, task: Task) {
+    private fun outputDetailedResults(result: org.morecup.pragmaddd.analyzer.model.DetailedAnalysisResult, task: Task) {
         val outputFile = getOutputFile(task)
-        outputFile.parentFile.mkdirs()
+        val writer = DetailedAnalysisResultWriter()
+        writer.writeToFile(result, outputFile)
 
-        // 固定为JSON格式输出
-        val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper().apply {
-            enable(com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT)
-        }
-        outputFile.writeText(mapper.writeValueAsString(results))
+        task.logger.info("[Pragma DDD] 详细分析结果已保存到: ${outputFile.absolutePath}")
+    }
 
-        task.logger.info("[Pragma DDD] 分析结果已保存到: ${outputFile.absolutePath}")
+    /**
+     * 创建详细分析摘要
+     */
+    private fun createDetailedSummary(classes: List<org.morecup.pragmaddd.analyzer.model.DetailedClassInfo>): org.morecup.pragmaddd.analyzer.model.AnalysisSummary {
+        return org.morecup.pragmaddd.analyzer.model.AnalysisSummary(
+            totalClasses = classes.size,
+            aggregateRootCount = classes.count { it.domainObjectType == org.morecup.pragmaddd.analyzer.model.DomainObjectType.AGGREGATE_ROOT },
+            domainEntityCount = classes.count { it.domainObjectType == org.morecup.pragmaddd.analyzer.model.DomainObjectType.DOMAIN_ENTITY },
+            valueObjectCount = classes.count { it.domainObjectType == org.morecup.pragmaddd.analyzer.model.DomainObjectType.VALUE_OBJECT },
+            totalFields = classes.sumOf { it.fields.size },
+            totalMethods = classes.sumOf { it.methods.size },
+            classesWithDocumentation = classes.count { !it.documentation.isNullOrBlank() },
+            fieldsWithDocumentation = classes.sumOf { classInfo ->
+                classInfo.fields.count { !it.documentation.isNullOrBlank() }
+            },
+            methodsWithDocumentation = classes.sumOf { classInfo ->
+                classInfo.methods.count { !it.documentation.isNullOrBlank() }
+            }
+        )
     }
 
 

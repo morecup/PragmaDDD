@@ -76,7 +76,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 accesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.GET,
+                        accessType = PropertyAccessType.READ,
                         ownerClass = ownerClass
                     )
                 )
@@ -92,7 +92,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 accesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.SET,
+                        accessType = PropertyAccessType.WRITE,
                         ownerClass = ownerClass
                     )
                 )
@@ -109,7 +109,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 accesses.add(
                     PropertyAccessMetadata(
                         propertyName = methodName,
-                        accessType = PropertyAccessType.GET,
+                        accessType = PropertyAccessType.READ,
                         ownerClass = ownerClass
                     )
                 )
@@ -188,7 +188,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.GET,
+                        accessType = PropertyAccessType.READ,
                         ownerClass = ownerClass
                     )
                 )
@@ -214,7 +214,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.SET,
+                        accessType = PropertyAccessType.WRITE,
                         ownerClass = ownerClass
                     )
                 )
@@ -290,11 +290,11 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     
                     // Determine if this is a getter or setter based on the function
                     val accessType = if (function == property.getter) {
-                        PropertyAccessType.GET
+                        PropertyAccessType.READ
                     } else if (function == property.setter) {
-                        PropertyAccessType.SET
+                        PropertyAccessType.WRITE
                     } else {
-                        PropertyAccessType.GET // Default to GET if unclear
+                        PropertyAccessType.READ // Default to READ if unclear
                     }
                     
                     println("PropertyAnalyzer: Found property access via correspondingPropertySymbol - property: $propertyName, access: $accessType")
@@ -316,7 +316,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             propertyAccesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
-                                    accessType = PropertyAccessType.SET,
+                                    accessType = PropertyAccessType.WRITE,
                                     ownerClass = receiverType
                                 )
                             )
@@ -329,7 +329,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             propertyAccesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
-                                    accessType = PropertyAccessType.GET,
+                                    accessType = PropertyAccessType.READ,
                                     ownerClass = receiverType
                                 )
                             )
@@ -342,7 +342,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             propertyAccesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
-                                    accessType = PropertyAccessType.GET,
+                                    accessType = PropertyAccessType.READ,
                                     ownerClass = receiverType
                                 )
                             )
@@ -355,7 +355,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             propertyAccesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
-                                    accessType = PropertyAccessType.SET,
+                                    accessType = PropertyAccessType.WRITE,
                                     ownerClass = receiverType
                                 )
                             )
@@ -394,7 +394,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             propertyAccesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
-                                    accessType = PropertyAccessType.GET,
+                                    accessType = PropertyAccessType.READ,
                                     ownerClass = ownerClass
                                 )
                             )
@@ -446,7 +446,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                         propertyAccesses.add(
                             PropertyAccessMetadata(
                                 propertyName = propertyName,
-                                accessType = PropertyAccessType.GET,
+                                accessType = PropertyAccessType.READ,
                                 ownerClass = ownerClass
                             )
                         )
@@ -491,7 +491,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.GET,
+                        accessType = PropertyAccessType.READ,
                         ownerClass = ownerClass
                     )
                 )
@@ -514,7 +514,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                 propertyAccesses.add(
                     PropertyAccessMetadata(
                         propertyName = propertyName,
-                        accessType = PropertyAccessType.SET,
+                        accessType = PropertyAccessType.WRITE,
                         ownerClass = ownerClass
                     )
                 )
@@ -543,7 +543,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.GET,
+                            accessType = PropertyAccessType.READ,
                             ownerClass = receiverType
                         )
                     )
@@ -555,7 +555,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.SET,
+                            accessType = PropertyAccessType.WRITE,
                             ownerClass = receiverType
                         )
                     )
@@ -567,7 +567,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = methodName,
-                            accessType = PropertyAccessType.GET,
+                            accessType = PropertyAccessType.READ,
                             ownerClass = receiverType
                         )
                     )
@@ -603,7 +603,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                                 propertyAccesses.add(
                                     PropertyAccessMetadata(
                                         propertyName = propertyName,
-                                        accessType = PropertyAccessType.GET,
+                                        accessType = PropertyAccessType.READ,
                                         ownerClass = receiverType
                                     )
                                 )
@@ -612,7 +612,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                                 propertyAccesses.add(
                                     PropertyAccessMetadata(
                                         propertyName = receiverMethodName,
-                                        accessType = PropertyAccessType.GET,
+                                        accessType = PropertyAccessType.READ,
                                         ownerClass = receiverType
                                     )
                                 )
@@ -633,7 +633,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                             propertyAccesses.add(
                                 PropertyAccessMetadata(
                                     propertyName = propertyName,
-                                    accessType = PropertyAccessType.GET,
+                                    accessType = PropertyAccessType.READ,
                                     ownerClass = ownerClass
                                 )
                             )
@@ -650,7 +650,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.GET,
+                            accessType = PropertyAccessType.READ,
                             ownerClass = receiverType
                         )
                     )
@@ -659,7 +659,7 @@ class PropertyAnalyzerImpl : PropertyAnalyzer {
                     propertyAccesses.add(
                         PropertyAccessMetadata(
                             propertyName = propertyName,
-                            accessType = PropertyAccessType.SET,
+                            accessType = PropertyAccessType.WRITE,
                             ownerClass = receiverType
                         )
                     )

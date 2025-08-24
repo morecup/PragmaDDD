@@ -51,7 +51,7 @@ class MethodCallToPropertyAccessConverter {
         extractPropertyNameFromKotlinSetter(methodName)?.let { propertyName ->
             return PropertyAccessMetadata(
                 propertyName = propertyName,
-                accessType = PropertyAccessType.SET,
+                accessType = PropertyAccessType.WRITE,
                 ownerClass = receiverType
             )
         }
@@ -60,7 +60,7 @@ class MethodCallToPropertyAccessConverter {
         extractPropertyNameFromKotlinGetter(methodName)?.let { propertyName ->
             return PropertyAccessMetadata(
                 propertyName = propertyName,
-                accessType = PropertyAccessType.GET,
+                accessType = PropertyAccessType.READ,
                 ownerClass = receiverType
             )
         }
@@ -69,7 +69,7 @@ class MethodCallToPropertyAccessConverter {
         extractPropertyNameFromJavaStyleGetter(methodName, methodCall.parameters)?.let { propertyName ->
             return PropertyAccessMetadata(
                 propertyName = propertyName,
-                accessType = PropertyAccessType.GET,
+                accessType = PropertyAccessType.READ,
                 ownerClass = receiverType
             )
         }
@@ -78,7 +78,7 @@ class MethodCallToPropertyAccessConverter {
         extractPropertyNameFromJavaStyleSetter(methodName, methodCall.parameters)?.let { propertyName ->
             return PropertyAccessMetadata(
                 propertyName = propertyName,
-                accessType = PropertyAccessType.SET,
+                accessType = PropertyAccessType.WRITE,
                 ownerClass = receiverType
             )
         }

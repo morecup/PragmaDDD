@@ -117,6 +117,6 @@ enum class DddAnnotationType {
  * 属性访问类型枚举
  */
 enum class PropertyAccessType {
-    GET,  // 属性读取操作
-    SET   // 属性写入操作
+    READ,  // 属性读取操作
+    WRITE  // 属性写入操作
 }

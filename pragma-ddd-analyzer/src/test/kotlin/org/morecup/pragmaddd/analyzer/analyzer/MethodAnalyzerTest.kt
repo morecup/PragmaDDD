@@ -92,24 +92,24 @@ class MethodAnalyzerTest {
         // Test PropertyAccessMetadata structure for property access detection
         val readAccess = PropertyAccessMetadata(
             propertyName = "testProperty",
-            accessType = PropertyAccessType.GET,
+            accessType = PropertyAccessType.READ,
             ownerClass = "com.example.TestClass"
         )
         
         val writeAccess = PropertyAccessMetadata(
             propertyName = "testProperty",
-            accessType = PropertyAccessType.SET,
+            accessType = PropertyAccessType.WRITE,
             ownerClass = "com.example.TestClass"
         )
         
         assertNotNull(readAccess)
         assertEquals("testProperty", readAccess.propertyName)
-        assertEquals(PropertyAccessType.GET, readAccess.accessType)
+        assertEquals(PropertyAccessType.READ, readAccess.accessType)
         assertEquals("com.example.TestClass", readAccess.ownerClass)
         
         assertNotNull(writeAccess)
         assertEquals("testProperty", writeAccess.propertyName)
-        assertEquals(PropertyAccessType.SET, writeAccess.accessType)
+        assertEquals(PropertyAccessType.WRITE, writeAccess.accessType)
         assertEquals("com.example.TestClass", writeAccess.ownerClass)
     }
 
@@ -122,8 +122,8 @@ class MethodAnalyzerTest {
         )
         
         val propertyAccesses = listOf(
-            PropertyAccessMetadata("prop1", PropertyAccessType.GET, "Class1"),
-            PropertyAccessMetadata("prop2", PropertyAccessType.SET, "Class2")
+            PropertyAccessMetadata("prop1", PropertyAccessType.READ, "Class1"),
+            PropertyAccessMetadata("prop2", PropertyAccessType.WRITE, "Class2")
         )
         
         val methodMetadata = MethodMetadata(
@@ -155,16 +155,16 @@ class MethodAnalyzerTest {
         
         // Verify property accesses
         assertEquals("prop1", methodMetadata.propertyAccesses[0].propertyName)
-        assertEquals(PropertyAccessType.GET, methodMetadata.propertyAccesses[0].accessType)
+        assertEquals(PropertyAccessType.READ, methodMetadata.propertyAccesses[0].accessType)
         assertEquals("prop2", methodMetadata.propertyAccesses[1].propertyName)
-        assertEquals(PropertyAccessType.SET, methodMetadata.propertyAccesses[1].accessType)
+        assertEquals(PropertyAccessType.WRITE, methodMetadata.propertyAccesses[1].accessType)
     }
 
     @Test
     fun `should verify PropertyAccessType enum values for field access detection`() {
         // Test PropertyAccessType enum for field reads and writes
-        val readType = PropertyAccessType.GET
-        val writeType = PropertyAccessType.SET
+        val readType = PropertyAccessType.READ
+        val writeType = PropertyAccessType.WRITE
         
         assertNotNull(readType)
         assertNotNull(writeType)
@@ -224,8 +224,8 @@ class MethodAnalyzerTest {
                 MethodCallMetadata("collect", "Stream", listOf("Collector"))
             ),
             propertyAccesses = listOf(
-                PropertyAccessMetadata("internalState", PropertyAccessType.GET, "CurrentClass"),
-                PropertyAccessMetadata("cache", PropertyAccessType.SET, "CurrentClass")
+                PropertyAccessMetadata("internalState", PropertyAccessType.READ, "CurrentClass"),
+                PropertyAccessMetadata("cache", PropertyAccessType.WRITE, "CurrentClass")
             ),
             documentation = DocumentationMetadata(
                 summary = "Complex method for testing",
@@ -264,8 +264,8 @@ class MethodAnalyzerTest {
         assertEquals("collect", complexMethodMetadata.methodCalls[2].targetMethod)
         
         // Verify property access patterns
-        assertEquals(PropertyAccessType.GET, complexMethodMetadata.propertyAccesses[0].accessType)
-        assertEquals(PropertyAccessType.SET, complexMethodMetadata.propertyAccesses[1].accessType)
+        assertEquals(PropertyAccessType.READ, complexMethodMetadata.propertyAccesses[0].accessType)
+        assertEquals(PropertyAccessType.WRITE, complexMethodMetadata.propertyAccesses[1].accessType)
     }
 
     @Test

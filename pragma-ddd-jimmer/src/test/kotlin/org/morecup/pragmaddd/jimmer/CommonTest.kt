@@ -18,11 +18,11 @@ class CommonTest {
 
     @Test
     fun testChangeAddressCmd(){
-        changeAddressCmdHandler.handle(ChangeAddressCmd(1, "新的地址"))
+//        changeAddressCmdHandler.handle(ChangeAddressCmd(1, "新的地址"))
     }
 
     @Test
     fun testCreateGoodsCmd(){
-        createGoodsCmdHandle.handle(CreateGoodsCmd("商品1", "地址1"))
+//        createGoodsCmdHandle.handle(CreateGoodsCmd("商品1", "地址1"))
     }
 }

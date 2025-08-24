@@ -70,32 +70,32 @@ class PropertyAnalyzerTest {
         // Test PropertyAccessMetadata structure for property access detection
         val readAccess = PropertyAccessMetadata(
             propertyName = "testProperty",
-            accessType = PropertyAccessType.GET,
+            accessType = PropertyAccessType.READ,
             ownerClass = "com.example.TestClass"
         )
         
         val writeAccess = PropertyAccessMetadata(
             propertyName = "testProperty",
-            accessType = PropertyAccessType.SET,
+            accessType = PropertyAccessType.WRITE,
             ownerClass = "com.example.TestClass"
         )
         
         assertNotNull(readAccess)
         assertEquals("testProperty", readAccess.propertyName)
-        assertEquals(PropertyAccessType.GET, readAccess.accessType)
+        assertEquals(PropertyAccessType.READ, readAccess.accessType)
         assertEquals("com.example.TestClass", readAccess.ownerClass)
         
         assertNotNull(writeAccess)
         assertEquals("testProperty", writeAccess.propertyName)
-        assertEquals(PropertyAccessType.SET, writeAccess.accessType)
+        assertEquals(PropertyAccessType.WRITE, writeAccess.accessType)
         assertEquals("com.example.TestClass", writeAccess.ownerClass)
     }
 
     @Test
     fun `should verify PropertyAccessType enum values for field access detection`() {
         // Test PropertyAccessType enum for field reads and writes
-        val readType = PropertyAccessType.GET
-        val writeType = PropertyAccessType.SET
+        val readType = PropertyAccessType.READ
+        val writeType = PropertyAccessType.WRITE
         
         assertNotNull(readType)
         assertNotNull(writeType)
@@ -111,19 +111,19 @@ class PropertyAnalyzerTest {
         // Test PropertyAccessMetadata with different owner classes
         val access1 = PropertyAccessMetadata(
             propertyName = "property1",
-            accessType = PropertyAccessType.GET,
+            accessType = PropertyAccessType.READ,
             ownerClass = "com.example.Class1"
         )
         
         val access2 = PropertyAccessMetadata(
             propertyName = "property2",
-            accessType = PropertyAccessType.SET,
+            accessType = PropertyAccessType.WRITE,
             ownerClass = "com.example.Class2"
         )
         
         val access3 = PropertyAccessMetadata(
             propertyName = "property3",
-            accessType = PropertyAccessType.GET,
+            accessType = PropertyAccessType.READ,
             ownerClass = null // External or unknown class
         )
         
@@ -142,19 +142,19 @@ class PropertyAnalyzerTest {
         // Test PropertyAccessMetadata with various property naming patterns
         val simpleProperty = PropertyAccessMetadata(
             propertyName = "name",
-            accessType = PropertyAccessType.GET,
+            accessType = PropertyAccessType.READ,
             ownerClass = "TestClass"
         )
         
         val camelCaseProperty = PropertyAccessMetadata(
             propertyName = "firstName",
-            accessType = PropertyAccessType.SET,
+            accessType = PropertyAccessType.WRITE,
             ownerClass = "TestClass"
         )
         
         val underscoreProperty = PropertyAccessMetadata(
             propertyName = "user_id",
-            accessType = PropertyAccessType.GET,
+            accessType = PropertyAccessType.READ,
             ownerClass = "TestClass"
         )
         
@@ -172,19 +172,19 @@ class PropertyAnalyzerTest {
     fun `should verify property access analysis supports complex scenarios`() {
         // Test complex property access scenarios
         val complexAccesses = listOf(
-            PropertyAccessMetadata("id", PropertyAccessType.GET, "User"),
-            PropertyAccessMetadata("name", PropertyAccessType.SET, "User"),
-            PropertyAccessMetadata("email", PropertyAccessType.GET, "User"),
-            PropertyAccessMetadata("status", PropertyAccessType.SET, "Order"),
-            PropertyAccessMetadata("items", PropertyAccessType.GET, "Order")
+            PropertyAccessMetadata("id", PropertyAccessType.READ, "User"),
+            PropertyAccessMetadata("name", PropertyAccessType.WRITE, "User"),
+            PropertyAccessMetadata("email", PropertyAccessType.READ, "User"),
+            PropertyAccessMetadata("status", PropertyAccessType.WRITE, "Order"),
+            PropertyAccessMetadata("items", PropertyAccessType.READ, "Order")
         )
         
         assertNotNull(complexAccesses)
         assertEquals(5, complexAccesses.size)
         
         // Verify different access types
-        val readAccesses = complexAccesses.filter { it.accessType == PropertyAccessType.GET }
-        val writeAccesses = complexAccesses.filter { it.accessType == PropertyAccessType.SET }
+        val readAccesses = complexAccesses.filter { it.accessType == PropertyAccessType.READ }
+        val writeAccesses = complexAccesses.filter { it.accessType == PropertyAccessType.WRITE }
         
         assertEquals(3, readAccesses.size)
         assertEquals(2, writeAccesses.size)
@@ -201,16 +201,16 @@ class PropertyAnalyzerTest {
     fun `should verify property analyzer handles method chain scenarios`() {
         // Test method chain property access patterns
         val chainAccesses = listOf(
-            PropertyAccessMetadata("user", PropertyAccessType.GET, "Order"),
-            PropertyAccessMetadata("profile", PropertyAccessType.GET, "User"),
-            PropertyAccessMetadata("name", PropertyAccessType.GET, "Profile")
+            PropertyAccessMetadata("user", PropertyAccessType.READ, "Order"),
+            PropertyAccessMetadata("profile", PropertyAccessType.READ, "User"),
+            PropertyAccessMetadata("name", PropertyAccessType.READ, "Profile")
         )
         
         assertNotNull(chainAccesses)
         assertEquals(3, chainAccesses.size)
         
         // All should be read accesses in a typical method chain
-        assertTrue(chainAccesses.all { it.accessType == PropertyAccessType.GET })
+        assertTrue(chainAccesses.all { it.accessType == PropertyAccessType.READ })
         
         // Verify the chain structure
         assertEquals("user", chainAccesses[0].propertyName)
@@ -227,10 +227,10 @@ class PropertyAnalyzerTest {
     fun `should verify property analyzer supports getter setter patterns`() {
         // Test getter/setter method call patterns
         val getterSetterAccesses = listOf(
-            PropertyAccessMetadata("name", PropertyAccessType.GET, "User"),   // getName()
-            PropertyAccessMetadata("name", PropertyAccessType.SET, "User"),  // setName()
-            PropertyAccessMetadata("age", PropertyAccessType.GET, "User"),    // getAge()
-            PropertyAccessMetadata("age", PropertyAccessType.SET, "User")    // setAge()
+            PropertyAccessMetadata("name", PropertyAccessType.READ, "User"),   // getName()
+            PropertyAccessMetadata("name", PropertyAccessType.WRITE, "User"),  // setName()
+            PropertyAccessMetadata("age", PropertyAccessType.READ, "User"),    // getAge()
+            PropertyAccessMetadata("age", PropertyAccessType.WRITE, "User")    // setAge()
         )
         
         assertNotNull(getterSetterAccesses)
@@ -244,10 +244,10 @@ class PropertyAnalyzerTest {
         assertEquals(2, ageAccesses.size)
         
         // Each property should have both read and write access
-        assertTrue(nameAccesses.any { it.accessType == PropertyAccessType.GET })
-        assertTrue(nameAccesses.any { it.accessType == PropertyAccessType.SET })
-        assertTrue(ageAccesses.any { it.accessType == PropertyAccessType.GET })
-        assertTrue(ageAccesses.any { it.accessType == PropertyAccessType.SET })
+        assertTrue(nameAccesses.any { it.accessType == PropertyAccessType.READ })
+        assertTrue(nameAccesses.any { it.accessType == PropertyAccessType.WRITE })
+        assertTrue(ageAccesses.any { it.accessType == PropertyAccessType.READ })
+        assertTrue(ageAccesses.any { it.accessType == PropertyAccessType.WRITE })
     }
 
     @Test

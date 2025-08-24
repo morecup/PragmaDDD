@@ -143,12 +143,12 @@ class MetadataModelsTest {
             propertyAccesses = listOf(
                 PropertyAccessMetadata(
                     propertyName = "value",
-                    accessType = PropertyAccessType.GET,
+                    accessType = PropertyAccessType.READ,
                     ownerClass = "com.example.User"
                 ),
                 PropertyAccessMetadata(
                     propertyName = "value",
-                    accessType = PropertyAccessType.SET,
+                    accessType = PropertyAccessType.WRITE,
                     ownerClass = "com.example.User"
                 )
             ),
@@ -202,7 +202,7 @@ class MetadataModelsTest {
         // Given
         val propertyAccessMetadata = PropertyAccessMetadata(
             propertyName = "balance",
-            accessType = PropertyAccessType.SET,
+            accessType = PropertyAccessType.WRITE,
             ownerClass = "com.example.Account"
         )
 
@@ -330,8 +330,8 @@ class MetadataModelsTest {
     @Test
     fun `should serialize all PropertyAccessType enum values`() {
         // Given
-        val read = PropertyAccessType.GET
-        val write = PropertyAccessType.SET
+        val read = PropertyAccessType.READ
+        val write = PropertyAccessType.WRITE
 
         // When & Then
         assertEquals("READ", objectMapper.writeValueAsString(read).trim('"'))
@@ -350,7 +350,7 @@ class MetadataModelsTest {
 
         // Then
         assertEquals(DddAnnotationType.AGGREGATE_ROOT, annotationType)
-        assertEquals(PropertyAccessType.GET, accessType)
+        assertEquals(PropertyAccessType.READ, accessType)
     }
 
     @Test
@@ -433,7 +433,7 @@ class MetadataModelsTest {
                     propertyAccesses = listOf(
                         PropertyAccessMetadata(
                             propertyName = "state",
-                            accessType = PropertyAccessType.GET,
+                            accessType = PropertyAccessType.READ,
                             ownerClass = "com.example.ComplexAggregate"
                         )
                     ),

@@ -27,7 +27,7 @@ class MethodCallToPropertyAccessConverterTest {
         assertEquals(1, result.size)
         val propertyAccess = result.first()
         assertEquals("status", propertyAccess.propertyName)
-        assertEquals(PropertyAccessType.SET, propertyAccess.accessType)
+        assertEquals(PropertyAccessType.WRITE, propertyAccess.accessType)
         assertEquals("com.example.Order", propertyAccess.ownerClass)
     }
     
@@ -47,7 +47,7 @@ class MethodCallToPropertyAccessConverterTest {
         assertEquals(1, result.size)
         val propertyAccess = result.first()
         assertEquals("items", propertyAccess.propertyName)
-        assertEquals(PropertyAccessType.GET, propertyAccess.accessType)
+        assertEquals(PropertyAccessType.READ, propertyAccess.accessType)
         assertEquals("com.example.Order", propertyAccess.ownerClass)
     }
     
@@ -67,7 +67,7 @@ class MethodCallToPropertyAccessConverterTest {
         assertEquals(1, result.size)
         val propertyAccess = result.first()
         assertEquals("status", propertyAccess.propertyName)
-        assertEquals(PropertyAccessType.GET, propertyAccess.accessType)
+        assertEquals(PropertyAccessType.READ, propertyAccess.accessType)
         assertEquals("com.example.Order", propertyAccess.ownerClass)
     }
     
@@ -87,7 +87,7 @@ class MethodCallToPropertyAccessConverterTest {
         assertEquals(1, result.size)
         val propertyAccess = result.first()
         assertEquals("status", propertyAccess.propertyName)
-        assertEquals(PropertyAccessType.SET, propertyAccess.accessType)
+        assertEquals(PropertyAccessType.WRITE, propertyAccess.accessType)
         assertEquals("com.example.Order", propertyAccess.ownerClass)
     }
     
@@ -108,16 +108,16 @@ class MethodCallToPropertyAccessConverterTest {
         assertEquals(4, result.size)
         
         // Verify each conversion
-        val statusSet = result.find { it.propertyName == "status" && it.accessType == PropertyAccessType.SET }
+        val statusSet = result.find { it.propertyName == "status" && it.accessType == PropertyAccessType.WRITE }
         assertNotNull(statusSet)
         
-        val itemsGet = result.find { it.propertyName == "items" && it.accessType == PropertyAccessType.GET }
+        val itemsGet = result.find { it.propertyName == "items" && it.accessType == PropertyAccessType.READ }
         assertNotNull(itemsGet)
         
-        val totalAmountGet = result.find { it.propertyName == "totalAmount" && it.accessType == PropertyAccessType.GET }
+        val totalAmountGet = result.find { it.propertyName == "totalAmount" && it.accessType == PropertyAccessType.READ }
         assertNotNull(totalAmountGet)
         
-        val customerNameSet = result.find { it.propertyName == "customerName" && it.accessType == PropertyAccessType.SET }
+        val customerNameSet = result.find { it.propertyName == "customerName" && it.accessType == PropertyAccessType.WRITE }
         assertNotNull(customerNameSet)
     }
     
@@ -153,7 +153,7 @@ class MethodCallToPropertyAccessConverterTest {
         assertEquals(1, result.size)
         val propertyAccess = result.first()
         assertEquals("status", propertyAccess.propertyName)
-        assertEquals(PropertyAccessType.SET, propertyAccess.accessType)
+        assertEquals(PropertyAccessType.WRITE, propertyAccess.accessType)
         assertNull(propertyAccess.ownerClass)
     }
     
@@ -236,10 +236,10 @@ class MethodCallToPropertyAccessConverterTest {
         // Then - should process valid ones and skip invalid ones
         assertEquals(2, result.size)
         
-        val statusSet = result.find { it.propertyName == "status" && it.accessType == PropertyAccessType.SET }
+        val statusSet = result.find { it.propertyName == "status" && it.accessType == PropertyAccessType.WRITE }
         assertNotNull(statusSet)
         
-        val customerNameGet = result.find { it.propertyName == "customerName" && it.accessType == PropertyAccessType.GET }
+        val customerNameGet = result.find { it.propertyName == "customerName" && it.accessType == PropertyAccessType.READ }
         assertNotNull(customerNameGet)
     }
     

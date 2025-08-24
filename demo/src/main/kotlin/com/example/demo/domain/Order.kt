@@ -1,6 +1,9 @@
 package com.example.demo.domain
 
+import org.jetbrains.annotations.NotNull
+import org.jetbrains.annotations.TestOnly
 import org.morecup.pragmaddd.core.annotation.AggregateRoot
+import org.morecup.pragmaddd.core.annotation.DomainEntity
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -9,6 +12,10 @@ import java.time.LocalDateTime
  */
 @AggregateRoot
 open class Order(
+    /**
+     * test orderIds 属性的记录
+     */
+    @field:NotNull
     private var orderIds: MutableList<String>,
     open var customerId: String,
     private var totalAmount: BigDecimal,
@@ -35,10 +42,13 @@ open class Order(
 //        }
 //    }
 
-    fun testFieldDomainEntity(){
-        println(product.productId)
-        product.name
-    }
-    
-//    fun testEmpty(){}
+//    fun testFieldDomainEntity(){
+//        println(product.productId)
+//        product.name
+//    }
+
+    /**
+     * 测试空方法
+     */
+    fun testEmpty(){}
 }

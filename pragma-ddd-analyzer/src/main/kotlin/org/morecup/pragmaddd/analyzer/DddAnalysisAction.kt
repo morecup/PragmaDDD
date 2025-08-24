@@ -93,14 +93,20 @@ open class DddAnalysisAction @Inject constructor(
                     task.logger.debug("[Pragma DDD] 分析目录: ${dir.absolutePath}")
                     val dirResults = analyzer.analyzeDirectory(dir)
                     results.addAll(dirResults)
-                    task.logger.info("[Pragma DDD] 在目录 ${dir.name} 中找到 ${dirResults.size} 个 @AggregateRoot 类")
+                    task.logger.info("[Pragma DDD] 在目录 ${dir.name} 中找到 ${dirResults.size} 个 DDD 类")
                 }
             }
 
             // 输出结果
             outputResults(results, task)
 
-            task.logger.info("[Pragma DDD] DDD 分析完成，找到 ${results.size} 个 @AggregateRoot 类")
+            // 统计各种 DDD 类型的数量
+            val aggregateRoots = results.count { it.domainObjectType == DomainObjectType.AGGREGATE_ROOT }
+            val domainEntities = results.count { it.domainObjectType == DomainObjectType.DOMAIN_ENTITY }
+            val valueObjects = results.count { it.domainObjectType == DomainObjectType.VALUE_OBJECT }
+            
+            task.logger.info("[Pragma DDD] DDD 分析完成，找到 ${results.size} 个 DDD 类：" +
+                " AggregateRoot($aggregateRoots), DomainEntity($domainEntities), ValueObject($valueObjects)")
 
         } catch (e: Exception) {
             task.logger.error("[Pragma DDD] DDD 分析失败: ${e.message}", e)

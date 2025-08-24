@@ -7,8 +7,8 @@ import java.io.FileInputStream
 import java.util.jar.JarFile
 
 /**
- * AggregateRoot 类分析器
- * 分析编译后的字节码中的属性访问情况
+ * DDD 类分析器
+ * 分析编译后的字节码中带有 @AggregateRoot、@DomainEntity、@ValueObject 注解的类的属性访问情况
  */
 class AggregateRootAnalyzer {
     
@@ -105,7 +105,7 @@ class AggregateRootAnalyzer {
         // 第一阶段：扫描所有 DDD 注解类
         val dddAnnotatedClasses = scanDddAnnotatedClasses(directory)
         
-        // 第二阶段：详细分析 AggregateRoot 类
+        // 第二阶段：详细分析所有 DDD 注解类
         val results = mutableListOf<ClassAnalysisResult>()
         
         directory.walkTopDown()

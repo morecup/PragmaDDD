@@ -49,7 +49,7 @@ class AggregateRootAnalyzerTest {
         
         val result = visitor.getResult()
         assertThat(result).isNotNull()
-        assertThat(result!!.isAggregateRoot).isTrue()
+        assertThat(result!!.domainObjectType).isEqualTo(DomainObjectType.AGGREGATE_ROOT)
         
         // 验证即使是空方法也被记录了
         assertThat(result.methods).hasSize(1)
@@ -308,5 +308,67 @@ class AggregateRootAnalyzerTest {
         // 验证没有记录非 DDD 类的属性访问
         val regularClassAccess = accesses.find { it.targetClassName == "com.example.RegularClass" }
         assertThat(regularClassAccess).isNull()
+    }
+    
+    @Test
+    fun `should analyze DomainEntity annotated classes`() {
+        val visitor = AggregateRootClassVisitor()
+        
+        // 模拟访问一个带有@DomainEntity注解的类
+        visitor.visit(52, 1, "com/example/OrderEntity", null, "java/lang/Object", null)
+        visitor.visitAnnotation("Lorg/morecup/pragmaddd/core/annotation/DomainEntity;", true)
+        
+        // 模拟访问一个方法
+        val methodVisitor = visitor.visitMethod(1, "updateStatus", "()V", null, null)
+        assertThat(methodVisitor).isInstanceOf(PropertyAccessMethodVisitor::class.java)
+        
+        methodVisitor?.visitEnd()
+        
+        val result = visitor.getResult()
+        assertThat(result).isNotNull()
+        assertThat(result!!.domainObjectType).isEqualTo(DomainObjectType.DOMAIN_ENTITY)
+        
+        assertThat(result.methods).hasSize(1)
+        val method = result.methods[0]
+        assertThat(method.methodName).isEqualTo("updateStatus")
+    }
+    
+    @Test
+    fun `should analyze ValueObject annotated classes`() {
+        val visitor = AggregateRootClassVisitor()
+        
+        // 模拟访问一个带有@ValueObject注解的类
+        visitor.visit(52, 1, "com/example/Money", null, "java/lang/Object", null)
+        visitor.visitAnnotation("Lorg/morecup/pragmaddd/core/annotation/ValueObject;", true)
+        
+        // 模拟访问一个方法
+        val methodVisitor = visitor.visitMethod(1, "add", "(Lcom/example/Money;)Lcom/example/Money;", null, null)
+        assertThat(methodVisitor).isInstanceOf(PropertyAccessMethodVisitor::class.java)
+        
+        methodVisitor?.visitEnd()
+        
+        val result = visitor.getResult()
+        assertThat(result).isNotNull()
+        assertThat(result!!.domainObjectType).isEqualTo(DomainObjectType.VALUE_OBJECT)
+        
+        assertThat(result.methods).hasSize(1)
+        val method = result.methods[0]
+        assertThat(method.methodName).isEqualTo("add")
+    }
+    
+    @Test
+    fun `should not analyze classes without DDD annotations`() {
+        val visitor = AggregateRootClassVisitor()
+        
+        // 模拟访问一个没有DDD注解的类
+        visitor.visit(52, 1, "com/example/RegularClass", null, "java/lang/Object", null)
+        
+        // 模拟访问一个方法
+        val methodVisitor = visitor.visitMethod(1, "regularMethod", "()V", null, null)
+        // 应该返回默认的方法访问器，而不是我们的PropertyAccessMethodVisitor
+        assertThat(methodVisitor).isNull()
+        
+        val result = visitor.getResult()
+        assertThat(result).isNull()
     }
 }

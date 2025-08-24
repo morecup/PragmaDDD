@@ -3,7 +3,7 @@ package org.morecup.pragmaddd.analyzer
 import org.objectweb.asm.*
 
 /**
- * ASM 类访问器，用于检测 @AggregateRoot 注解并分析方法
+ * ASM 类访问器，用于检测 DDD 注解并分析方法
  */
 class AggregateRootClassVisitor(
     private val dddAnnotatedClasses: Map<String, Set<String>> = emptyMap()
@@ -11,6 +11,8 @@ class AggregateRootClassVisitor(
     
     private var className: String = ""
     private var isAggregateRoot: Boolean = false
+    private var isDomainEntity: Boolean = false
+    private var isValueObject: Boolean = false
     private val methods = mutableListOf<PropertyAccessInfo>()
     
     override fun visit(
@@ -26,8 +28,10 @@ class AggregateRootClassVisitor(
     }
     
     override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
-        if (descriptor == "Lorg/morecup/pragmaddd/core/annotation/AggregateRoot;") {
-            isAggregateRoot = true
+        when (descriptor) {
+            "Lorg/morecup/pragmaddd/core/annotation/AggregateRoot;" -> isAggregateRoot = true
+            "Lorg/morecup/pragmaddd/core/annotation/DomainEntity;" -> isDomainEntity = true
+            "Lorg/morecup/pragmaddd/core/annotation/ValueObject;" -> isValueObject = true
         }
         return super.visitAnnotation(descriptor, visible)
     }
@@ -39,17 +43,32 @@ class AggregateRootClassVisitor(
         signature: String?,
         exceptions: Array<out String>?
     ): MethodVisitor? {
-        // 只分析被 @AggregateRoot 注解的类的方法
-        return if (isAggregateRoot) {
+        // 分析所有 DDD 注解的类的方法
+        return if (hasDddAnnotation()) {
             PropertyAccessMethodVisitor(className, name, descriptor, methods, dddAnnotatedClasses)
         } else {
             super.visitMethod(access, name, descriptor, signature, exceptions)
         }
     }
     
+    private fun hasDddAnnotation(): Boolean {
+        return isAggregateRoot || isDomainEntity || isValueObject
+    }
+    
     fun getResult(): ClassAnalysisResult? {
-        return if (isAggregateRoot) {
-            ClassAnalysisResult(className, isAggregateRoot, methods.toList())
+        return if (hasDddAnnotation()) {
+            val domainObjectType = when {
+                isAggregateRoot -> DomainObjectType.AGGREGATE_ROOT
+                isDomainEntity -> DomainObjectType.DOMAIN_ENTITY
+                isValueObject -> DomainObjectType.VALUE_OBJECT
+                else -> throw IllegalStateException("Should not reach here")
+            }
+            
+            ClassAnalysisResult(
+                className = className,
+                domainObjectType = domainObjectType,
+                methods = methods.toList()
+            )
         } else {
             null
         }

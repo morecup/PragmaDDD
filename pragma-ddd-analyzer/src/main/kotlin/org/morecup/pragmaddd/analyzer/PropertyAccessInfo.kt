@@ -43,6 +43,15 @@ enum class PropertyAccessType {
 }
 
 /**
+ * 领域对象类型枚举
+ */
+enum class DomainObjectType {
+    AGGREGATE_ROOT,
+    DOMAIN_ENTITY,
+    VALUE_OBJECT
+}
+
+/**
  * 属性访问信息
  */
 data class PropertyAccessInfo(
@@ -61,6 +70,6 @@ data class PropertyAccessInfo(
  */
 data class ClassAnalysisResult(
     val className: String,
-    val isAggregateRoot: Boolean,
+    val domainObjectType: DomainObjectType, // 领域对象类型
     val methods: List<PropertyAccessInfo>
 )

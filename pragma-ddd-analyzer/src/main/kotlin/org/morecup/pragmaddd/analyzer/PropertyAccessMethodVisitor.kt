@@ -11,13 +11,15 @@ class PropertyAccessMethodVisitor(
     private val className: String,
     private val methodName: String,
     private val methodDescriptor: String,
-    private val methods: MutableList<PropertyAccessInfo>
+    private val methods: MutableList<PropertyAccessInfo>,
+    private val dddAnnotatedClasses: Map<String, Set<String>> = emptyMap() // 类名 -> 注解集合
 ) : MethodVisitor(Opcodes.ASM9) {
     
     private val accessedProperties = mutableSetOf<String>()
     private val modifiedProperties = mutableSetOf<String>()
     private val calledMethods = mutableMapOf<String, MethodCallInfo>()
     private val lambdaExpressions = mutableSetOf<LambdaInfo>()
+    private val externalPropertyAccesses = mutableSetOf<ExternalPropertyAccessInfo>()
     
     // 用于跟踪指令顺序和关联
     private val instructionSequence = mutableListOf<InstructionInfo>()
@@ -28,16 +30,38 @@ class PropertyAccessMethodVisitor(
     }
     
     override fun visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String) {
-        // 只关注当前类的字段访问
-        if (owner.replace('/', '.') == className) {
+        val ownerClassName = owner.replace('/', '.')
+        
+        if (ownerClassName == className) {
+            // 当前类的字段访问
             when (opcode) {
                 Opcodes.GETFIELD -> {
-                    // 读取字段
                     accessedProperties.add(name)
                 }
                 Opcodes.PUTFIELD -> {
-                    // 写入字段
                     modifiedProperties.add(name)
+                }
+            }
+        } else {
+            // 外部类的字段访问 - 检查是否是DDD注解类
+            val annotations = dddAnnotatedClasses[ownerClassName]
+            if (annotations != null && annotations.isNotEmpty()) {
+                val accessType = when (opcode) {
+                    Opcodes.GETFIELD -> PropertyAccessType.READ
+                    Opcodes.PUTFIELD -> PropertyAccessType.WRITE
+                    else -> null
+                }
+                
+                if (accessType != null) {
+                    val externalAccess = ExternalPropertyAccessInfo(
+                        targetClassName = ownerClassName,
+                        propertyName = name,
+                        accessType = accessType,
+                        hasAggregateRootAnnotation = annotations.contains("AggregateRoot"),
+                        hasDomainEntityAnnotation = annotations.contains("DomainEntity"),
+                        hasValueObjectAnnotation = annotations.contains("ValueObject")
+                    )
+                    externalPropertyAccesses.add(externalAccess)
                 }
             }
         }
@@ -233,7 +257,8 @@ class PropertyAccessMethodVisitor(
                 accessedProperties = accessedProperties.toSet(),
                 modifiedProperties = modifiedProperties.toSet(),
                 calledMethods = updatedCalledMethods,
-                lambdaExpressions = lambdaExpressions.toSet()
+                lambdaExpressions = lambdaExpressions.toSet(),
+                externalPropertyAccesses = externalPropertyAccesses.toSet()
             )
         )
         super.visitEnd()

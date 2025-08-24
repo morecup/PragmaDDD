@@ -185,8 +185,8 @@ open class DddAnalysisAction @Inject constructor(
         val outputFile = getOutputFile(task).parentFile
         outputFile.parentFile.mkdirs()
 
-        // 声明输出文件
-        task.outputs.dir(outputFile)
+        // 注意：不声明输出文件，避免Gradle清理导致合并失败
+        // task.outputs.dir(outputFile)
 
         // 将生成的资源目录添加到项目的资源源码集中
         try {

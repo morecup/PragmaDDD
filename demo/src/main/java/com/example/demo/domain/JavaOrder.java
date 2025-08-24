@@ -1,7 +1,6 @@
 package com.example.demo.domain;
 
 
-import jdk.jfr.Name;
 import org.morecup.pragmaddd.core.annotation.AggregateRoot;
 import org.morecup.pragmaddd.core.annotation.OrmField;
 import org.jetbrains.annotations.NotNull;

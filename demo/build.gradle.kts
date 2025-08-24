@@ -1,3 +1,5 @@
+import org.gradle.internal.impldep.org.apache.http.client.methods.RequestBuilder.options
+
 plugins {
     kotlin("jvm")
 //    id("io.freefair.aspectj.post-compile-weaving") version "8.4"
@@ -16,6 +18,10 @@ dependencies {
     // 测试依赖
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testImplementation("org.assertj:assertj-core:3.24.2")
+}
+
+tasks.compileJava{
+    options.encoding = "UTF-8"
 }
 
 tasks.test {

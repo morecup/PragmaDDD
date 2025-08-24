@@ -10,7 +10,7 @@ import java.util.jar.JarFile
  * DDD 类分析器
  * 分析编译后的字节码中带有 @AggregateRoot、@DomainEntity、@ValueObject 注解的类的属性访问情况
  */
-class AggregateRootAnalyzer {
+class DomainObjectAnalyzer {
     
     companion object {
         private const val AGGREGATE_ROOT_ANNOTATION = "Lorg/morecup/pragmaddd/core/annotation/AggregateRoot;"
@@ -62,7 +62,7 @@ class AggregateRootAnalyzer {
         return try {
             FileInputStream(classFile).use { input ->
                 val classReader = ClassReader(input)
-                val visitor = AggregateRootClassVisitor()
+                val visitor = DomainObjectClassVisitor()
                 classReader.accept(visitor, ClassReader.EXPAND_FRAMES)
                 visitor.getResult()
             }
@@ -85,7 +85,7 @@ class AggregateRootAnalyzer {
                     try {
                         jar.getInputStream(entry).use { input ->
                             val classReader = ClassReader(input)
-                            val visitor = AggregateRootClassVisitor()
+                            val visitor = DomainObjectClassVisitor()
                             classReader.accept(visitor, ClassReader.EXPAND_FRAMES)
                             visitor.getResult()?.let { results.add(it) }
                         }
@@ -152,7 +152,7 @@ class AggregateRootAnalyzer {
         return try {
             FileInputStream(classFile).use { input ->
                 val classReader = ClassReader(input)
-                val visitor = AggregateRootClassVisitor(dddAnnotatedClasses)
+                val visitor = DomainObjectClassVisitor(dddAnnotatedClasses)
                 classReader.accept(visitor, ClassReader.EXPAND_FRAMES)
                 visitor.getResult()
             }

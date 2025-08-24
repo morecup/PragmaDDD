@@ -8,12 +8,12 @@ import org.objectweb.asm.Handle
 import org.objectweb.asm.Opcodes
 import java.io.File
 
-class AggregateRootAnalyzerTest {
+class DomainObjectAnalyzerTest {
     
     @TempDir
     lateinit var tempDir: File
     
-    private lateinit var analyzer: AggregateRootAnalyzer
+    private lateinit var analyzer: DomainObjectAnalyzer
     
     // 测试用的 DDD 注解类映射
     private val testDddClasses = mapOf(
@@ -24,7 +24,7 @@ class AggregateRootAnalyzerTest {
     
     @BeforeEach
     fun setup() {
-        analyzer = AggregateRootAnalyzer()
+        analyzer = DomainObjectAnalyzer()
     }
     
     @Test
@@ -34,7 +34,7 @@ class AggregateRootAnalyzerTest {
         // 创建一个简单的测试类字节码（这里我们模拟测试场景）
         // 实际的字节码分析需要真实的class文件，这里我们验证逻辑
         
-        val visitor = AggregateRootClassVisitor()
+        val visitor = DomainObjectClassVisitor()
         
         // 模拟访问一个带有@AggregateRoot注解的类
         visitor.visit(52, 1, "com/example/TestClass", null, "java/lang/Object", null)
@@ -312,7 +312,7 @@ class AggregateRootAnalyzerTest {
     
     @Test
     fun `should analyze DomainEntity annotated classes`() {
-        val visitor = AggregateRootClassVisitor()
+        val visitor = DomainObjectClassVisitor()
         
         // 模拟访问一个带有@DomainEntity注解的类
         visitor.visit(52, 1, "com/example/OrderEntity", null, "java/lang/Object", null)
@@ -335,7 +335,7 @@ class AggregateRootAnalyzerTest {
     
     @Test
     fun `should analyze ValueObject annotated classes`() {
-        val visitor = AggregateRootClassVisitor()
+        val visitor = DomainObjectClassVisitor()
         
         // 模拟访问一个带有@ValueObject注解的类
         visitor.visit(52, 1, "com/example/Money", null, "java/lang/Object", null)
@@ -358,7 +358,7 @@ class AggregateRootAnalyzerTest {
     
     @Test
     fun `should not analyze classes without DDD annotations`() {
-        val visitor = AggregateRootClassVisitor()
+        val visitor = DomainObjectClassVisitor()
         
         // 模拟访问一个没有DDD注解的类
         visitor.visit(52, 1, "com/example/RegularClass", null, "java/lang/Object", null)

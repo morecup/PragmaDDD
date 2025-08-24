@@ -85,7 +85,7 @@ open class DddAnalysisAction @Inject constructor(
             }
 
             // 执行分析
-            val analyzer = AggregateRootAnalyzer()
+            val analyzer = DomainObjectAnalyzer()
             val results = mutableListOf<ClassAnalysisResult>()
 
             compiledClasses.forEach { dir ->

@@ -15,7 +15,7 @@ object StandaloneAnalyzer {
             return
         }
         
-        val analyzer = AggregateRootAnalyzer()
+        val analyzer = DomainObjectAnalyzer()
         val results = mutableListOf<ClassAnalysisResult>()
         
         args.forEach { path ->

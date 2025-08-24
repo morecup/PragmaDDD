@@ -5,7 +5,7 @@ import org.objectweb.asm.*
 /**
  * ASM 类访问器，用于检测 DDD 注解并分析方法
  */
-class AggregateRootClassVisitor(
+class DomainObjectClassVisitor(
     private val dddAnnotatedClasses: Map<String, Set<String>> = emptyMap()
 ) : ClassVisitor(Opcodes.ASM9) {
     

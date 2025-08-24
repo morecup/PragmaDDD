@@ -39,7 +39,8 @@ data class DetailedFieldInfo(
     val value: Any? = null,                    // 默认值
     val modifiers: ModifierInfo,               // 修饰符信息
     val annotations: List<AnnotationInfo> = emptyList(), // 字段上的注解
-    val documentation: String? = null          // 文档注释（Javadoc/KDoc）
+    val documentation: String? = null,         // 文档注释（Javadoc/KDoc）
+    val isNullable: Boolean? = null            // 可空性信息：true=可空，false=非空，null=未知
 )
 
 /**

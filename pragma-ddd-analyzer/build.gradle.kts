@@ -30,6 +30,9 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.1.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.0")
 
+    // Kotlin 元数据解析依赖
+    implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.7.0")
+
     // Gradle API for plugin development
     implementation(gradleApi())
 

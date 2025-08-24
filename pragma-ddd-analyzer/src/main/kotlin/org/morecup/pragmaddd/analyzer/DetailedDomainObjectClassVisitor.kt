@@ -1,6 +1,7 @@
 package org.morecup.pragmaddd.analyzer
 
 import org.morecup.pragmaddd.analyzer.model.*
+import org.morecup.pragmaddd.analyzer.kotlin.*
 import org.objectweb.asm.*
 import org.objectweb.asm.Opcodes.*
 
@@ -23,7 +24,11 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
 
     private var domainObjectType: org.morecup.pragmaddd.analyzer.model.DomainObjectType? = null
 
-    // 用于存储Kotlin属性注解的临时映射
+    // Kotlin元数据相关
+    private var isKotlinClass: Boolean = false
+    private val kotlinMetadataExtractor = KotlinMetadataAnnotationExtractor()
+
+    // 用于存储Kotlin属性注解的临时映射（保留作为备用方案）
     private val kotlinPropertyAnnotations: MutableMap<String, MutableList<AnnotationInfo>> = mutableMapOf()
     
     override fun visit(
@@ -51,6 +56,13 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
     }
     
     override fun visitAnnotation(descriptor: String, visible: Boolean): AnnotationVisitor? {
+        // 检查是否是Kotlin元数据注解
+        if (descriptor == "Lkotlin/Metadata;") {
+            isKotlinClass = true
+            // 暂时跳过Kotlin元数据的详细解析，标记为Kotlin类即可
+            return null
+        }
+
         // 过滤不需要的注解
         if (!shouldIncludeAnnotation(descriptor)) {
             return null
@@ -157,8 +169,14 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
      */
     fun getResult(): DetailedClassInfo? {
         return if (domainObjectType != null) {
-            // 在返回结果前，将Kotlin属性注解合并到对应的字段上
-            val mergedFields = mergeKotlinPropertyAnnotations()
+            // 根据类类型选择不同的处理策略
+            val finalFields = if (isKotlinClass) {
+                // Kotlin类：合并属性注解并添加可空性信息
+                mergeKotlinPropertyAnnotationsAndNullability()
+            } else {
+                // Java类：添加基于注解的可空性信息
+                addJavaNullabilityInfo(fields)
+            }
 
             DetailedClassInfo(
                 className = className,
@@ -170,7 +188,7 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
                 signature = signature,
                 sourceFile = sourceFile,
                 annotations = annotations,
-                fields = mergedFields,
+                fields = finalFields,
                 methods = methods,
                 domainObjectType = domainObjectType
             )
@@ -298,7 +316,64 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
     }
 
     /**
-     * 将Kotlin属性注解合并到对应的字段上
+     * 将Kotlin属性注解合并到对应的字段上，并添加可空性信息
+     */
+    private fun mergeKotlinPropertyAnnotationsAndNullability(): List<DetailedFieldInfo> {
+        return fields.map { field ->
+            // 合并属性注解（使用现有的合成方法处理）
+            val propertyAnnotations = kotlinPropertyAnnotations[field.name] ?: emptyList()
+            val mergedAnnotations = if (propertyAnnotations.isNotEmpty()) {
+                (field.annotations + propertyAnnotations).toMutableList()
+            } else {
+                field.annotations
+            }
+
+            // 使用简化的可空性分析
+            val isNullable = kotlinMetadataExtractor.analyzeKotlinFieldNullability(
+                field.name, field.descriptor, mergedAnnotations
+            )
+
+            field.copy(
+                annotations = mergedAnnotations,
+                isNullable = isNullable
+            )
+        }
+    }
+
+    /**
+     * 为Java类添加基于注解的可空性信息
+     */
+    private fun addJavaNullabilityInfo(fields: List<DetailedFieldInfo>): List<DetailedFieldInfo> {
+        return fields.map { field ->
+            val isNullable = determineJavaNullability(field.annotations)
+            field.copy(isNullable = isNullable)
+        }
+    }
+
+    /**
+     * 根据Java注解确定可空性
+     */
+    private fun determineJavaNullability(annotations: List<AnnotationInfo>): Boolean? {
+        val hasNotNull = annotations.any { annotation ->
+            annotation.name.endsWith("NotNull") ||
+            annotation.name.endsWith("NonNull") ||
+            annotation.name.endsWith("Nonnull")
+        }
+
+        val hasNullable = annotations.any { annotation ->
+            annotation.name.endsWith("Nullable") ||
+            annotation.name.endsWith("CheckForNull")
+        }
+
+        return when {
+            hasNotNull -> false  // 明确标记为非空
+            hasNullable -> true  // 明确标记为可空
+            else -> null         // 未知状态
+        }
+    }
+
+    /**
+     * 将Kotlin属性注解合并到对应的字段上（原有逻辑，保留作为备用）
      */
     private fun mergeKotlinPropertyAnnotations(): List<DetailedFieldInfo> {
         return fields.map { field ->

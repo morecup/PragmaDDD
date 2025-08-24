@@ -8,30 +8,21 @@ import java.math.BigDecimal
  */
 @AggregateRoot
 class Product(
-    private var productId: String,
-    private var name: String,
+    @field: JvmField
+    var productId: String,
+    var name: String,
     private var price: BigDecimal,
     private var stock: Int,
     private var category: String
 ) {
-    
-    fun getProductId(): String = productId
-    
-    fun getName(): String = name
-    
-    fun getPrice(): BigDecimal = price
-    
-    fun getStock(): Int = stock
-    
-    fun getCategory(): String = category
-    
+
     /**
      * 更新价格 - 简单的属性修改
      */
     fun updatePrice(newPrice: BigDecimal) {
         this.price = newPrice
     }
-    
+
     /**
      * 减少库存 - 访问和修改库存
      */
@@ -40,21 +31,21 @@ class Product(
             this.stock = this.stock - quantity
         }
     }
-    
+
     /**
      * 增加库存 - 访问和修改库存
      */
     fun addStock(quantity: Int) {
         this.stock = this.stock + quantity
     }
-    
+
     /**
      * 检查是否有库存 - 只访问库存属性
      */
     fun hasStock(): Boolean {
         return this.stock > 0
     }
-    
+
     /**
      * 检查库存是否充足 - 只访问库存属性
      */

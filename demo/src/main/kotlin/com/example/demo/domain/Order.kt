@@ -42,10 +42,10 @@ open class Order(
 //        }
 //    }
 
-//    fun testFieldDomainEntity(){
-//        println(product.productId)
-//        product.name
-//    }
+    fun testFieldDomainEntity(){
+        println(product.productId)
+        product.name
+    }
 
     /**
      * 测试空方法

@@ -8,22 +8,13 @@ import java.math.BigDecimal
  */
 @AggregateRoot
 class Product(
-    private var productId: String,
-    private var name: String,
+    @field: JvmField
+    var productId: String,
+    var name: String,
     private var price: BigDecimal,
     private var stock: Int,
     private var category: String
 ) {
-    
-    fun getProductId(): String = productId
-    
-    fun getName(): String = name
-    
-    fun getPrice(): BigDecimal = price
-    
-    fun getStock(): Int = stock
-    
-    fun getCategory(): String = category
     
     /**
      * 更新价格 - 简单的属性修改

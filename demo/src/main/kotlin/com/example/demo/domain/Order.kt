@@ -1,5 +1,6 @@
 package com.example.demo.domain
 
+import jdk.jfr.Name
 import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.TestOnly
 import org.morecup.pragmaddd.core.annotation.AggregateRoot
@@ -17,6 +18,7 @@ open class Order(
      */
     @field:NotNull
     private var orderIds: MutableList<String>,
+    @Name("customerId")
     open var customerId: String,
     private var totalAmount: BigDecimal,
     private var product: Product,
@@ -42,10 +44,10 @@ open class Order(
 //        }
 //    }
 
-//    fun testFieldDomainEntity(){
-//        println(product.productId)
-//        product.name
-//    }
+    fun testFieldDomainEntity(){
+        println(product.productId)
+        product.name
+    }
 
     /**
      * 测试空方法

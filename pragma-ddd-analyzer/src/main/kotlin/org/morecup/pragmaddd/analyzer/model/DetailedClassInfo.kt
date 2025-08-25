@@ -9,7 +9,7 @@ data class AnnotationInfo(
     val name: String,                           // 注解名称，如 "AggregateRoot"
     val descriptor: String,                     // 注解描述符，如 "Lorg/morecup/pragmaddd/core/annotation/AggregateRoot;"
     val visible: Boolean = true,                // 是否在运行时可见
-    val parameters: Map<String, Any> = emptyMap() // 注解参数
+    val parameters: Map<String, Any?> = emptyMap() // 注解参数（支持 null 值）
 )
 
 /**

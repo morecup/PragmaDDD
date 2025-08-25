@@ -2,6 +2,8 @@ package org.morecup.pragmaddd.analyzer
 
 import org.morecup.pragmaddd.analyzer.model.*
 import org.morecup.pragmaddd.analyzer.kotlin.*
+import org.morecup.pragmaddd.analyzer.serialization.UniversalAnnotationVisitorFactory
+import org.morecup.pragmaddd.analyzer.serialization.UniversalAnnotationVisitor
 import org.objectweb.asm.*
 import org.objectweb.asm.Opcodes.*
 
@@ -84,7 +86,8 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
                 domainObjectType = org.morecup.pragmaddd.analyzer.model.DomainObjectType.VALUE_OBJECT
         }
 
-        val annotationVisitor = DetailedAnnotationVisitor(annotationInfo)
+        // 使用通用注解访问器
+        val annotationVisitor = UniversalAnnotationVisitorFactory.createVisitor(annotationInfo)
 
         return object : AnnotationVisitor(ASM9) {
             override fun visit(name: String?, value: Any?) {
@@ -97,6 +100,10 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
 
             override fun visitArray(name: String?): AnnotationVisitor? {
                 return annotationVisitor.visitArray(name)
+            }
+
+            override fun visitAnnotation(name: String?, descriptor: String?): AnnotationVisitor? {
+                return annotationVisitor.visitAnnotation(name, descriptor)
             }
 
             override fun visitEnd() {
@@ -389,65 +396,7 @@ class DetailedDomainObjectClassVisitor : ClassVisitor(ASM9) {
     }
 }
 
-/**
- * 详细注解访问器
- */
-class DetailedAnnotationVisitor(
-    private var annotationInfo: AnnotationInfo
-) : AnnotationVisitor(ASM9) {
 
-    private val parameters = mutableMapOf<String, Any>()
-
-    override fun visit(name: String?, value: Any?) {
-        if (name != null && value != null) {
-            parameters[name] = value
-        }
-        super.visit(name, value)
-    }
-
-    override fun visitEnum(name: String?, descriptor: String?, value: String?) {
-        if (name != null && value != null) {
-            // 枚举值处理
-            parameters[name] = value
-        }
-        super.visitEnum(name, descriptor, value)
-    }
-
-    override fun visitArray(name: String?): AnnotationVisitor? {
-        if (name != null) {
-            val arrayValues = mutableListOf<Any>()
-            parameters[name] = arrayValues
-
-            return object : AnnotationVisitor(ASM9) {
-                override fun visit(name: String?, value: Any?) {
-                    if (value != null) {
-                        arrayValues.add(value)
-                    }
-                }
-
-                override fun visitEnum(name: String?, descriptor: String?, value: String?) {
-                    if (value != null) {
-                        arrayValues.add(value)
-                    }
-                }
-            }
-        }
-        return super.visitArray(name)
-    }
-
-    override fun visitEnd() {
-        // 创建新的注解信息，包含收集到的参数
-        annotationInfo = annotationInfo.copy(parameters = parameters.toMap())
-        super.visitEnd()
-    }
-
-    /**
-     * 获取更新后的注解信息
-     */
-    fun getUpdatedAnnotationInfo(): AnnotationInfo {
-        return annotationInfo
-    }
-}
 
 /**
  * 详细字段访问器
@@ -468,7 +417,8 @@ class DetailedFieldVisitor(
             visible = visible
         )
 
-        val annotationVisitor = DetailedAnnotationVisitor(annotationInfo)
+        // 使用通用注解访问器
+        val annotationVisitor = UniversalAnnotationVisitorFactory.createVisitor(annotationInfo)
 
         return object : AnnotationVisitor(ASM9) {
             override fun visit(name: String?, value: Any?) {
@@ -481,6 +431,10 @@ class DetailedFieldVisitor(
 
             override fun visitArray(name: String?): AnnotationVisitor? {
                 return annotationVisitor.visitArray(name)
+            }
+
+            override fun visitAnnotation(name: String?, descriptor: String?): AnnotationVisitor? {
+                return annotationVisitor.visitAnnotation(name, descriptor)
             }
 
             override fun visitEnd() {
@@ -536,7 +490,7 @@ class KotlinPropertyAnnotationMethodVisitor(
             visible = visible
         )
 
-        val annotationVisitor = DetailedAnnotationVisitor(annotationInfo)
+        val annotationVisitor = UniversalAnnotationVisitorFactory.createVisitor(annotationInfo)
 
         return object : AnnotationVisitor(ASM9) {
             override fun visit(name: String?, value: Any?) {
@@ -606,7 +560,7 @@ class DetailedMethodVisitor(
             visible = visible
         )
 
-        val annotationVisitor = DetailedAnnotationVisitor(annotationInfo)
+        val annotationVisitor = UniversalAnnotationVisitorFactory.createVisitor(annotationInfo)
 
         return object : AnnotationVisitor(ASM9) {
             override fun visit(name: String?, value: Any?) {

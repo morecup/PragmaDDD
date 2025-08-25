@@ -5,6 +5,7 @@ plugins {
     id("com.google.devtools.ksp") version "2.1.0-1.0.29"
     id("org.jetbrains.kotlin.plugin.allopen") version "1.9.22" // 使用与Kotlin版本匹配的插件版本
 //    id("net.bytebuddy.byte-buddy-gradle-plugin") version "1.14.18"
+    id("io.freefair.aspectj.post-compile-weaving") version "8.4"
     id("org.morecup.pragmaddd.pragma-ddd-analyzer")
     kotlin("plugin.noarg") version "1.8.0"
 }
@@ -17,7 +18,7 @@ dependencies {
 //    implementation("org.aspectj:aspectjrt:1.9.7")
     implementation(project(":pragma-ddd-core"))
 //    aspect("org.aspectj:aspectjweaver:1.9.7")
-//    testAspect(project(":pragma-ddd-aspect"))
+    testAspect(project(":pragma-ddd-aspect"))
 
     implementation("org.ow2.asm:asm-tree:9.8")
 //    implementation("net.bytebuddy:byte-buddy:1.14.18")

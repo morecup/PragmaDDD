@@ -11,6 +11,8 @@ dependencies {
     implementation("org.aspectj:aspectjrt:1.9.7")
     implementation("org.ow2.asm:asm:9.8")
     implementation("org.ow2.asm:asm-tree:9.8")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
     testAspect(project(":pragma-ddd-aspect"))
 
     compileOnly("org.slf4j:slf4j-api:2.0.7")

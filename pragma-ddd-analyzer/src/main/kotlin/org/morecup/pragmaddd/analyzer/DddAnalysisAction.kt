@@ -12,6 +12,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.compile.AbstractCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+import org.morecup.pragmaddd.analyzer.callgraph.CompileTimeCallAnalyzer
 import java.io.File
 import javax.inject.Inject
 import kotlin.collections.filter
@@ -110,6 +111,11 @@ open class DddAnalysisAction @Inject constructor(
             // 输出增强结果
             outputDetailedResults(finalResult, task)
 
+            // 执行编译期调用关系分析（如果启用）
+            if (extension?.compileTimeAnalysis?.get()?.enabled?.getOrElse(true) == true) {
+                executeCompileTimeCallAnalysis(compiledClasses, finalResult, task)
+            }
+
             task.logger.info("[Pragma DDD] 增强 DDD 分析完成，找到 ${finalResult.summary.totalClasses} 个 DDD 类：" +
                 " AggregateRoot(${finalResult.summary.aggregateRootCount}), " +
                 "DomainEntity(${finalResult.summary.domainEntityCount}), " +
@@ -118,6 +124,61 @@ open class DddAnalysisAction @Inject constructor(
         } catch (e: Exception) {
             task.logger.error("[Pragma DDD] DDD 分析失败: ${e.message}", e)
             throw e
+        }
+    }
+
+    /**
+     * 执行编译期调用关系分析
+     */
+    private fun executeCompileTimeCallAnalysis(
+        compiledClasses: List<File>,
+        domainAnalysisResult: org.morecup.pragmaddd.analyzer.model.DetailedAnalysisResult,
+        task: Task
+    ) {
+        try {
+            task.logger.info("[Pragma DDD] 开始编译期调用关系分析...")
+
+            val config = extension?.compileTimeAnalysis?.get()
+            val analyzer = CompileTimeCallAnalyzer(
+                includePackages = config?.includePackages?.getOrElse(emptyList<String>()) ?: emptyList(),
+                excludePackages = config?.excludePackages?.getOrElse(emptyList<String>()) ?: emptyList(),
+                repositoryNamingRules = config?.repositoryNamingRules?.getOrElse(emptyList<String>()) ?: emptyList(),
+                debugMode = config?.debugMode?.getOrElse(false) ?: false
+            )
+
+            // 为每个编译目录执行分析
+            compiledClasses.forEach { classDir ->
+                if (classDir.exists() && classDir.isDirectory) {
+                    // 获取对应的domain-analyzer.json文件
+                    val domainAnalysisFile = getDomainAnalysisFile(task)
+
+                    // 获取输出缓存文件路径
+                    val cacheFile = getCacheFile(task)
+
+                    // 检查是否需要重新分析
+                    if (analyzer.shouldReanalyze(classDir, domainAnalysisFile, cacheFile)) {
+                        task.logger.info("[Pragma DDD] 执行编译期调用关系分析: ${classDir.name}")
+
+                        val result = analyzer.analyze(classDir, domainAnalysisFile, cacheFile)
+                        val statistics = analyzer.getStatistics(result)
+
+                        task.logger.info("[Pragma DDD] 编译期调用关系分析完成:")
+                        task.logger.info("[Pragma DDD] - Repository数量: ${statistics["repositoryCount"]}")
+                        task.logger.info("[Pragma DDD] - Repository调用数量: ${statistics["repositoryCallCount"]}")
+                        task.logger.info("[Pragma DDD] - 缓存生成: ${statistics["cacheGenerated"]}")
+
+                        if (config?.debugMode?.getOrElse(false) == true) {
+                            task.logger.info("[Pragma DDD] 详细统计信息: $statistics")
+                        }
+                    } else {
+                        task.logger.info("[Pragma DDD] 编译期调用关系分析缓存有效，跳过分析")
+                    }
+                }
+            }
+
+        } catch (e: Exception) {
+            task.logger.error("[Pragma DDD] 编译期调用关系分析失败: ${e.message}", e)
+            // 不抛出异常，避免影响主要的分析流程
         }
     }
 
@@ -152,6 +213,22 @@ open class DddAnalysisAction @Inject constructor(
         writer.writeToFile(result, outputFile)
 
         task.logger.info("[Pragma DDD] 详细分析结果已保存到: ${outputFile.absolutePath}")
+    }
+
+    /**
+     * 获取domain-analyzer.json文件路径
+     */
+    private fun getDomainAnalysisFile(task: Task): File {
+        val buildDir = task.project.buildDir
+        return File(buildDir, "generated/pragmaddd/$sourceSetName/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json")
+    }
+
+    /**
+     * 获取call-analysis.json缓存文件路径
+     */
+    private fun getCacheFile(task: Task): File {
+        val buildDir = task.project.buildDir
+        return File(buildDir, "generated/pragmaddd/$sourceSetName/resources/META-INF/pragma-ddd-analyzer/call-analysis.json")
     }
 
     /**

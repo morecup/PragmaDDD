@@ -55,6 +55,11 @@ class PragmaDddAnalyzerPlugin : Plugin<Project> {
         // 创建扩展配置
         val extension = project.extensions.create("pragmaDddAnalyzer", PragmaDddAnalyzerExtension::class.java)
 
+        // 创建编译期调用关系分析配置
+        extension.compileTimeAnalysis.convention(
+            project.objects.newInstance(CompileTimeAnalysisExtension::class.java)
+        )
+
         // 只配置 Java 和 Kotlin 插件的集成，不处理其他语言
         project.plugins.withType(JavaPlugin::class.java) { configurePlugin("java", extension) }
         project.plugins.withId("org.jetbrains.kotlin.jvm") { configurePlugin("kotlin", extension) }

@@ -27,13 +27,14 @@ class Goods(
     var address: MutableList<Address>,
 ){
 
-//    fun rename(newName: String) {
-//        this.name = newName
-//    }
+    fun rename(newName: String) {
+        this.name = newName
+    }
 
     fun changeAddress(newAddress: String) {
 //        this.nowAddress1 = newAddress
         println(nowAddress1)
+        rename("newName")
 //        println(address.size)
 //        val hubeiAddress = HubeiAddress("hubeiAddress", "2342", "234324")
 //        address.add(hubeiAddress)

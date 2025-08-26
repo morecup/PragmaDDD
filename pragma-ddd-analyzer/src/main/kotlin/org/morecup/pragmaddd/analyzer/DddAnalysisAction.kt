@@ -12,6 +12,8 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.compile.AbstractCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+import org.morecup.pragmaddd.analyzer.callanalysis.CompileTimeCallAnalyzer
+import org.morecup.pragmaddd.analyzer.callanalysis.model.RepositoryIdentificationConfig
 import java.io.File
 import javax.inject.Inject
 import kotlin.collections.filter
@@ -115,6 +117,9 @@ open class DddAnalysisAction @Inject constructor(
                 "DomainEntity(${finalResult.summary.domainEntityCount}), " +
                 "ValueObject(${finalResult.summary.valueObjectCount})")
 
+            // 执行编译期调用分析
+            executeCallAnalysis(compiledClasses, task)
+
         } catch (e: Exception) {
             task.logger.error("[Pragma DDD] DDD 分析失败: ${e.message}", e)
             throw e
@@ -175,7 +180,59 @@ open class DddAnalysisAction @Inject constructor(
         )
     }
 
-
+    /**
+     * 执行编译期调用分析
+     */
+    private fun executeCallAnalysis(compiledClasses: List<File>, task: Task) {
+        try {
+            task.logger.info("[Pragma DDD] 开始执行编译期调用分析...")
+            
+            // 检查是否启用调用分析
+            if (!extension.enableCallAnalysis.getOrElse(true)) {
+                task.logger.info("[Pragma DDD] 编译期调用分析已禁用")
+                return
+            }
+            
+            // 配置Repository识别规则
+            val config = RepositoryIdentificationConfig(
+                includePackages = extension.includePackages.getOrElse(setOf("**")).toList(),
+                excludePackages = extension.excludePackages.getOrElse(setOf(
+                    "java.**", "kotlin.**", "org.springframework.**", "org.junit.**"
+                )).toList(),
+                repositoryNamingRules = extension.repositoryNamingRules.getOrElse(setOf(
+                    "{AggregateRoot}Repository",
+                    "I{AggregateRoot}Repository",
+                    "{AggregateRoot}Repo"
+                )).toList()
+            )
+            
+            val callAnalyzer = CompileTimeCallAnalyzer(config)
+            
+            compiledClasses.forEach { dir ->
+                if (dir.exists() && dir.isDirectory) {
+                    // 查找对应的domain-analyzer.json文件
+                    val buildDir = task.project.buildDir
+                    val domainAnalysisFile = File(buildDir, 
+                        "generated/pragmaddd/$sourceSetName/resources/META-INF/pragma-ddd-analyzer/domain-analyzer.json")
+                    
+                    // 输出调用分析结果
+                    val callAnalysisOutputFile = File(buildDir,
+                        "generated/pragmaddd/$sourceSetName/resources/META-INF/pragma-ddd-analyzer/call-analysis.json")
+                    
+                    if (domainAnalysisFile.exists()) {
+                        callAnalyzer.analyzeDirectory(dir, domainAnalysisFile, callAnalysisOutputFile)
+                        task.logger.info("[Pragma DDD] 调用分析结果已保存到: ${callAnalysisOutputFile.absolutePath}")
+                    } else {
+                        task.logger.warn("[Pragma DDD] 未找到domain-analyzer.json文件: ${domainAnalysisFile.absolutePath}")
+                    }
+                }
+            }
+            
+        } catch (e: Exception) {
+            task.logger.error("[Pragma DDD] 编译期调用分析失败: ${e.message}", e)
+            // 不抛出异常，允许构建继续
+        }
+    }
 
     /**
      * 将此 Action 添加到任务中

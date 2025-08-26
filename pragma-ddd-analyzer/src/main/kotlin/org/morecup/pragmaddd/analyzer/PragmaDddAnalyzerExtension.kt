@@ -12,7 +12,13 @@ import org.gradle.api.provider.SetProperty
  * ```kotlin
  * pragmaDddAnalyzer {
  *     verbose.set(false)                                   // 不输出详细日志（推荐）
- *     classPaths.set(setOf("build/classes/kotlin/main"))   // 自定义类路径（通常不需要）
+ *     enableCallAnalysis.set(true)                         // 启用编译期调用分析
+ *     repositoryNamingRules.set(setOf(                     // Repository命名规则
+ *         "{AggregateRoot}Repository",
+ *         "I{AggregateRoot}Repository"
+ *     ))
+ *     includePackages.set(setOf("com.example.**"))         // 包含的包名模式
+ *     excludePackages.set(setOf("com.example.test.**"))    // 排除的包名模式
  * }
  * ```
  *
@@ -34,11 +40,46 @@ abstract class PragmaDddAnalyzerExtension {
      */
     abstract val verbose: Property<Boolean>
 
+    /**
+     * 是否启用编译期调用分析
+     * 默认值：true
+     */
+    abstract val enableCallAnalysis: Property<Boolean>
 
+    /**
+     * Repository命名规则
+     * 用于通过命名约定识别Repository
+     */
+    abstract val repositoryNamingRules: SetProperty<String>
+
+    /**
+     * 包含的包名模式
+     * 用于过滤分析范围
+     */
+    abstract val includePackages: SetProperty<String>
+
+    /**
+     * 排除的包名模式
+     * 用于过滤分析范围
+     */
+    abstract val excludePackages: SetProperty<String>
 
     init {
         // 设置默认值
         verbose.convention(false)
         classPaths.convention(emptySet())
+        enableCallAnalysis.convention(true)
+        repositoryNamingRules.convention(setOf(
+            "{AggregateRoot}Repository",
+            "I{AggregateRoot}Repository",
+            "{AggregateRoot}Repo"
+        ))
+        includePackages.convention(setOf("**"))
+        excludePackages.convention(setOf(
+            "java.**",
+            "kotlin.**", 
+            "org.springframework.**",
+            "org.junit.**"
+        ))
     }
 }

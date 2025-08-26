@@ -2,6 +2,7 @@ import org.gradle.internal.impldep.org.apache.http.client.methods.RequestBuilder
 
 plugins {
     kotlin("jvm")
+    application
 //    id("io.freefair.aspectj.post-compile-weaving") version "8.4"
     id("org.morecup.pragmaddd.pragma-ddd-analyzer")
 }
@@ -26,6 +27,11 @@ tasks.compileJava{
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// 应用程序配置
+application {
+    mainClass.set("com.example.demo.DemoApplicationKt")
 }
 
 // 可选的插件配置

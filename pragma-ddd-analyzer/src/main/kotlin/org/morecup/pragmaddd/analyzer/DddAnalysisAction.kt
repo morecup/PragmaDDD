@@ -15,6 +15,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import java.io.File
 import javax.inject.Inject
 import kotlin.collections.filter
+import org.morecup.pragmaddd.analyzer.repository.RepositoryCallAnalyzer
+import org.morecup.pragmaddd.analyzer.repository.RepositoryAnalysisResultWriter
 
 /**
  * DDD 分析 Action，用于在编译完成后立即执行领域模型分析
@@ -110,6 +112,9 @@ open class DddAnalysisAction @Inject constructor(
             // 输出增强结果
             outputDetailedResults(finalResult, task)
 
+            // 执行Repository调用分析
+            performRepositoryCallAnalysis(compiledClasses, task)
+
             task.logger.info("[Pragma DDD] 增强 DDD 分析完成，找到 ${finalResult.summary.totalClasses} 个 DDD 类：" +
                 " AggregateRoot(${finalResult.summary.aggregateRootCount}), " +
                 "DomainEntity(${finalResult.summary.domainEntityCount}), " +
@@ -173,6 +178,52 @@ open class DddAnalysisAction @Inject constructor(
                 classInfo.methods.count { !it.documentation.isNullOrBlank() }
             }
         )
+    }
+
+    /**
+     * 执行Repository调用分析
+     */
+    private fun performRepositoryCallAnalysis(compiledClasses: List<File>, task: Task) {
+        try {
+            task.logger.info("[Pragma DDD] 开始Repository调用分析...")
+            
+            val repositoryAnalyzer = RepositoryCallAnalyzer()
+            
+            // 对所有编译目录进行Repository分析
+            compiledClasses.forEach { dir ->
+                if (dir.exists() && dir.isDirectory) {
+                    task.logger.debug("[Pragma DDD] Repository分析目录: ${dir.absolutePath}")
+                    val analysisResult = repositoryAnalyzer.analyzeDirectory(dir)
+                    
+                    if (analysisResult.callAnalysis.isNotEmpty()) {
+                        // 输出Repository分析结果
+                        val repositoryOutputFile = getRepositoryAnalysisOutputFile(task)
+                        val repositoryWriter = RepositoryAnalysisResultWriter()
+                        repositoryWriter.writeToFile(analysisResult, repositoryOutputFile)
+                        
+                        task.logger.info("[Pragma DDD] Repository分析结果已保存到: ${repositoryOutputFile.absolutePath}")
+                        task.logger.info("[Pragma DDD] Repository分析统计: " +
+                            "聚合根(${analysisResult.aggregateRoots.size}), " +
+                            "Repository(${analysisResult.repositories.size}), " +
+                            "Repository调用(${analysisResult.callAnalysis.sumOf { it.repositoryCalls.size }})")
+                    } else {
+                        task.logger.info("[Pragma DDD] 在目录 ${dir.name} 中未找到Repository调用")
+                    }
+                }
+            }
+            
+            task.logger.info("[Pragma DDD] Repository调用分析完成")
+        } catch (e: Exception) {
+            task.logger.warn("[Pragma DDD] Repository分析失败，但不影响主分析: ${e.message}")
+        }
+    }
+
+    /**
+     * 获取Repository分析结果输出文件
+     */
+    private fun getRepositoryAnalysisOutputFile(task: Task): File {
+        val repositoryAnalysisPath = "build/generated/pragmaddd/$sourceSetName/resources/META-INF/pragma-ddd-analyzer/repository-call-analysis.json"
+        return task.project.file(repositoryAnalysisPath)
     }
 
 

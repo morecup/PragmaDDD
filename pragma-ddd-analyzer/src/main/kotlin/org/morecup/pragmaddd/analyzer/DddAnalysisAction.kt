@@ -115,6 +115,12 @@ open class DddAnalysisAction @Inject constructor(
                 "DomainEntity(${finalResult.summary.domainEntityCount}), " +
                 "ValueObject(${finalResult.summary.valueObjectCount})")
 
+            // 如果启用了编译期调用分析，在domain分析完成后执行
+            // 暂时注释，解决编译问题
+            // if (extension.compileTimeAnalysis.enabled.get()) {
+            //     executeCallAnalysis(task, compiledClasses)
+            // }
+
         } catch (e: Exception) {
             task.logger.error("[Pragma DDD] DDD 分析失败: ${e.message}", e)
             throw e
@@ -250,4 +256,37 @@ open class DddAnalysisAction @Inject constructor(
             null
         }
     }
+
+    /**
+     * 执行编译期调用分析
+     * 暂时注释，解决编译问题
+     */
+    /*
+    private fun executeCallAnalysis(task: Task, compiledClasses: List<File>) {
+        try {
+            task.logger.info("[Pragma DDD] 开始执行编译期调用分析...")
+            
+            val callAnalysisAction = CallAnalysisAction()
+            callAnalysisAction.extension = extension
+            callAnalysisAction.sourceSetName = sourceSetName
+            
+            // 设置编译输出目录
+            compiledClasses.forEach { dir ->
+                if (dir.exists() && dir.isDirectory) {
+                    callAnalysisAction.additionalInputPath.from(dir)
+                }
+            }
+            
+            // 执行调用分析
+            callAnalysisAction.execute(task)
+            
+        } catch (e: Exception) {
+            if (extension.compileTimeAnalysis.debugMode.get()) {
+                task.logger.error("[Pragma DDD] 编译期调用分析失败: ${e.message}", e)
+            } else {
+                task.logger.warn("[Pragma DDD] 编译期调用分析失败: ${e.message}")
+            }
+        }
+    }
+    */
 }
